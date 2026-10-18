@@ -11,6 +11,7 @@ from app.database import get_db, engine
 from app.core.exceptions import SRPException
 from app.modules.academic.router import router as academic_router
 from app.modules.auth.router import router as auth_router
+from app.modules.users_mgmt.router import router as users_mgmt_router
 
 
 @asynccontextmanager
@@ -95,5 +96,7 @@ def detailed_health_check(db: Session = Depends(get_db)) -> dict:
 # Mount Domain Routers
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(academic_router, prefix=settings.API_V1_PREFIX)
+app.include_router(users_mgmt_router, prefix=settings.API_V1_PREFIX)
+
 
 
