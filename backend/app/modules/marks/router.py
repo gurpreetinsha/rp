@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.modules.auth.models import User
-from app.modules.auth.dependencies import require_staff
-from app.modules.marks.schemas import OfficialMarkOut
+from app.modules.auth.dependencies import require_staff, require_admin
+from app.modules.marks.schemas import OfficialMarkOut, AmendMarkRequest, MarkAmendmentOut
 from app.modules.marks.service import MarksService
 
 router = APIRouter(prefix="/marks", tags=["Official Marks"])
@@ -37,3 +37,30 @@ def get_official_mark_by_id(
 ):
     """Staff-only: retrieve an official mark record by ID."""
     return MarksService.get_official_mark(db, mark_id)
+
+
+@router.post("/official/{mark_id}/amend", response_model=OfficialMarkOut)
+def amend_official_mark(
+    mark_id: uuid.UUID,
+    payload: AmendMarkRequest,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin-only: formally amend an official mark post-publication with audit history."""
+    return MarksService.amend_official_mark(
+        db=db,
+        mark_id=mark_id,
+        payload=payload,
+        admin_user_id=current_admin.id,
+    )
+
+
+@router.get("/official/{mark_id}/amendments", response_model=List[MarkAmendmentOut])
+def list_mark_amendments(
+    mark_id: uuid.UUID,
+    current_staff: User = Depends(require_staff),
+    db: Session = Depends(get_db),
+):
+    """Staff-only: view historical amendments and correction reasons for a mark."""
+    return MarksService.list_amendments(db=db, mark_id=mark_id)
+
