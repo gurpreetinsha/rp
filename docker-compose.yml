@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: srp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: srp_db
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: srp_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/srp_db
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: srp_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    # The frontend serves static files via nginx on port 80.
+    # Ensure the Vite dev proxy is disabled in production build.
+
+volumes:
+  pg_data:
+    driver: local
