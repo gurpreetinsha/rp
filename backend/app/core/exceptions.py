@@ -41,3 +41,6 @@ class ConflictException(SRPException):
 class ValidationFailedException(SRPException):
     def __init__(self, detail: str = "Validation failed"):
         super().__init__(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+
+
+ValidationException = ValidationFailedException
