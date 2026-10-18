@@ -12,10 +12,10 @@ from app.modules.results.models import CalculatedResult
 from app.core.enums import UserRole, SessionStatus, BatchStatus, ResultStatus
 
 
-def test_create_and_get_department(client):
-    """Test department creation and retrieval."""
+def test_create_and_get_department(client, admin_headers):
+    """Test department creation and retrieval with admin credentials."""
     payload = {"code": "CSE", "name": "Computer Science and Engineering"}
-    res = client.post(f"{settings.API_V1_PREFIX}/academic/departments", json=payload)
+    res = client.post(f"{settings.API_V1_PREFIX}/academic/departments", json=payload, headers=admin_headers)
     assert res.status_code == 201
     data = res.json()
     assert data["code"] == "CSE"
@@ -23,27 +23,28 @@ def test_create_and_get_department(client):
     assert "id" in data
 
     dept_id = data["id"]
-    get_res = client.get(f"{settings.API_V1_PREFIX}/academic/departments/{dept_id}")
+    get_res = client.get(f"{settings.API_V1_PREFIX}/academic/departments/{dept_id}", headers=admin_headers)
     assert get_res.status_code == 200
     assert get_res.json()["id"] == dept_id
 
 
-def test_duplicate_department_code_conflict(client):
+def test_duplicate_department_code_conflict(client, admin_headers):
     """Test that creating a department with an existing code returns 409 Conflict."""
     payload = {"code": "ECE", "name": "Electronics & Communication"}
-    res1 = client.post(f"{settings.API_V1_PREFIX}/academic/departments", json=payload)
+    res1 = client.post(f"{settings.API_V1_PREFIX}/academic/departments", json=payload, headers=admin_headers)
     assert res1.status_code == 201
 
-    res2 = client.post(f"{settings.API_V1_PREFIX}/academic/departments", json=payload)
+    res2 = client.post(f"{settings.API_V1_PREFIX}/academic/departments", json=payload, headers=admin_headers)
     assert res2.status_code == 409
     assert "already exists" in res2.json()["error"]["message"]
 
 
-def test_create_program_under_department(client):
+def test_create_program_under_department(client, admin_headers):
     """Test creating an academic program under an existing department."""
     dept_res = client.post(
         f"{settings.API_V1_PREFIX}/academic/departments",
         json={"code": "MECH", "name": "Mechanical Engineering"},
+        headers=admin_headers,
     )
     assert dept_res.status_code == 201
     dept_id = dept_res.json()["id"]
@@ -54,14 +55,14 @@ def test_create_program_under_department(client):
         "name": "B.Tech in Mechanical Engineering",
         "total_semesters": 8,
     }
-    prog_res = client.post(f"{settings.API_V1_PREFIX}/academic/programs", json=prog_payload)
+    prog_res = client.post(f"{settings.API_V1_PREFIX}/academic/programs", json=prog_payload, headers=admin_headers)
     assert prog_res.status_code == 201
     prog_data = prog_res.json()
     assert prog_data["code"] == "BTECH_MECH"
     assert prog_data["department_id"] == dept_id
 
 
-def test_program_with_invalid_department_returns_404(client):
+def test_program_with_invalid_department_returns_404(client, admin_headers):
     """Test program creation with a non-existent department returns 404."""
     fake_dept_id = str(uuid.uuid4())
     prog_payload = {
@@ -70,11 +71,11 @@ def test_program_with_invalid_department_returns_404(client):
         "name": "Invalid Program",
         "total_semesters": 4,
     }
-    res = client.post(f"{settings.API_V1_PREFIX}/academic/programs", json=prog_payload)
+    res = client.post(f"{settings.API_V1_PREFIX}/academic/programs", json=prog_payload, headers=admin_headers)
     assert res.status_code == 404
 
 
-def test_create_and_update_course(client):
+def test_create_and_update_course(client, admin_headers):
     """Test course creation, default values, and patch updates."""
     payload = {
         "code": "CS101",
@@ -82,7 +83,7 @@ def test_create_and_update_course(client):
         "credits": 4.0,
         "pass_percentage": 40.0,
     }
-    res = client.post(f"{settings.API_V1_PREFIX}/academic/courses", json=payload)
+    res = client.post(f"{settings.API_V1_PREFIX}/academic/courses", json=payload, headers=admin_headers)
     assert res.status_code == 201
     course_data = res.json()
     assert course_data["code"] == "CS101"
@@ -93,20 +94,21 @@ def test_create_and_update_course(client):
     patch_res = client.patch(
         f"{settings.API_V1_PREFIX}/academic/courses/{course_id}",
         json={"pass_percentage": 50.0, "name": "Intro to Programming in Python"},
+        headers=admin_headers,
     )
     assert patch_res.status_code == 200
     assert patch_res.json()["pass_percentage"] == 50.0
     assert patch_res.json()["name"] == "Intro to Programming in Python"
 
 
-def test_create_and_transition_examination_session(client):
+def test_create_and_transition_examination_session(client, admin_headers):
     """Test examination session creation in DRAFT and lifecycle status transition."""
     session_payload = {
         "name": "Fall 2026 Regular Exams",
         "academic_year": "2026-2027",
         "semester_number": 3,
     }
-    res = client.post(f"{settings.API_V1_PREFIX}/academic/sessions", json=session_payload)
+    res = client.post(f"{settings.API_V1_PREFIX}/academic/sessions", json=session_payload, headers=admin_headers)
     assert res.status_code == 201
     session_data = res.json()
     assert session_data["status"] == SessionStatus.DRAFT.value
@@ -116,6 +118,7 @@ def test_create_and_transition_examination_session(client):
     status_res = client.patch(
         f"{settings.API_V1_PREFIX}/academic/sessions/{session_id}/status",
         json={"status": SessionStatus.MARKS_ENTRY_OPEN.value},
+        headers=admin_headers,
     )
     assert status_res.status_code == 200
     assert status_res.json()["status"] == SessionStatus.MARKS_ENTRY_OPEN.value
