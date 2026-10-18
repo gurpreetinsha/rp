@@ -5,13 +5,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.enums import ResultStatus
-from app.modules.auth.dependencies import require_admin, require_staff
+from app.modules.auth.dependencies import require_admin, require_staff, require_student
 from app.modules.auth.models import User
 from app.modules.results.schemas import (
     CalculatedResultOut,
     CalculationSummaryOut,
     CalculateRequest,
     WithholdRequest,
+    StudentMarksheetOut,
 )
 from app.modules.results.service import ResultsService
 
@@ -107,3 +108,76 @@ def set_result_withhold(
         reason=payload.reason,
         current_user_id=current_admin.id,
     )
+
+
+@router.post(
+    "/sessions/{session_id}/publish",
+    response_model=CalculationSummaryOut,
+)
+def publish_session_results(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin),
+):
+    """Officially publish calculated examination results making them accessible to students (Admin only)."""
+    return ResultsService.publish_session_results(
+        db=db,
+        session_id=session_id,
+        admin_user_id=current_admin.id,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/unpublish",
+    response_model=CalculationSummaryOut,
+)
+def unpublish_session_results(
+    session_id: uuid.UUID,
+    payload: WithholdRequest,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin),
+):
+    """Rollback published results to CALCULATED status for administrative correction (Admin only)."""
+    return ResultsService.unpublish_session_results(
+        db=db,
+        session_id=session_id,
+        reason=payload.reason or "Administrative rollback",
+        admin_user_id=current_admin.id,
+    )
+
+
+@router.get(
+    "/my-results",
+    response_model=List[StudentMarksheetOut],
+)
+def get_my_published_results(
+    db: Session = Depends(get_db),
+    current_student_user: User = Depends(require_student),
+):
+    """View all officially published session marksheets for the authenticated student (Student only)."""
+    return ResultsService.get_student_marksheets(
+        db=db,
+        student_user_id=current_student_user.id,
+    )
+
+
+@router.get(
+    "/my-results/sessions/{session_id}",
+    response_model=StudentMarksheetOut,
+)
+def get_my_session_result(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_student_user: User = Depends(require_student),
+):
+    """View official published marksheet for a specific examination session (Student only)."""
+    marksheets = ResultsService.get_student_marksheets(
+        db=db,
+        student_user_id=current_student_user.id,
+        session_id=session_id,
+    )
+    if not marksheets:
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("Published marksheet not found for this examination session")
+    return marksheets[0]
+

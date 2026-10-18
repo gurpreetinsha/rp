@@ -14,6 +14,8 @@ from app.modules.results.schemas import (
     CalculatedResultOut,
     ResultSubjectDetailOut,
     CalculationSummaryOut,
+    StudentMarksheetOut,
+    StudentSubjectResultOut,
 )
 from app.modules.audit.service import AuditService
 
@@ -353,3 +355,169 @@ class ResultsService:
         db.commit()
 
         return ResultsService.get_student_result(db, result.session_id, result.student_id)
+
+    @staticmethod
+    def publish_session_results(
+        db: Session,
+        session_id: uuid.UUID,
+        admin_user_id: uuid.UUID,
+    ) -> CalculationSummaryOut:
+        """Officially publish calculated results for an examination session (Admin only)."""
+        session = db.get(ExaminationSession, session_id)
+        if not session:
+            raise NotFoundException(f"Examination session with ID {session_id} not found")
+
+        if session.status != SessionStatus.CALCULATED:
+            raise ConflictException(
+                f"Cannot publish examination session in status '{session.status.value}'. "
+                "Results must be in 'CALCULATED' status before publishing."
+            )
+
+        session.status = SessionStatus.PUBLISHED
+        session.published_at = utcnow()
+        session.published_by_user_id = admin_user_id
+
+        AuditService.log(
+            db=db,
+            user_id=admin_user_id,
+            action="PUBLISH_SESSION_RESULTS",
+            entity_type="examination_sessions",
+            entity_id=str(session.id),
+            details={
+                "session_name": session.name,
+                "published_at": session.published_at.isoformat(),
+            },
+        )
+        db.commit()
+
+        return ResultsService.get_session_summary(db, session_id)
+
+    @staticmethod
+    def unpublish_session_results(
+        db: Session,
+        session_id: uuid.UUID,
+        reason: str,
+        admin_user_id: uuid.UUID,
+    ) -> CalculationSummaryOut:
+        """Rollback published status to CALCULATED for emergency administrative corrections."""
+        session = db.get(ExaminationSession, session_id)
+        if not session:
+            raise NotFoundException(f"Examination session with ID {session_id} not found")
+
+        if session.status != SessionStatus.PUBLISHED:
+            raise ConflictException("Only currently PUBLISHED examination sessions can be unpublished.")
+
+        session.status = SessionStatus.CALCULATED
+        session.published_at = None
+        session.published_by_user_id = None
+
+        AuditService.log(
+            db=db,
+            user_id=admin_user_id,
+            action="UNPUBLISH_SESSION_RESULTS",
+            entity_type="examination_sessions",
+            entity_id=str(session.id),
+            details={
+                "session_name": session.name,
+                "reason": reason,
+            },
+        )
+        db.commit()
+
+        return ResultsService.get_session_summary(db, session_id)
+
+    @staticmethod
+    def get_student_marksheets(
+        db: Session,
+        student_user_id: uuid.UUID,
+        session_id: Optional[uuid.UUID] = None,
+    ) -> List[StudentMarksheetOut]:
+        """Fetch official published results for the authenticated student."""
+        student = db.execute(
+            select(Student)
+            .options(joinedload(Student.user), joinedload(Student.program))
+            .where(Student.user_id == student_user_id)
+        ).scalar_one_or_none()
+
+        if not student:
+            raise NotFoundException("Student profile not found for authenticated user")
+
+        query = (
+            select(CalculatedResult)
+            .join(ExaminationSession, CalculatedResult.session_id == ExaminationSession.id)
+            .options(
+                joinedload(CalculatedResult.session),
+                joinedload(CalculatedResult.subject_details).joinedload(ResultSubjectDetail.course),
+            )
+            .where(
+                CalculatedResult.student_id == student.id,
+                ExaminationSession.status == SessionStatus.PUBLISHED,
+            )
+        )
+
+        if session_id:
+            query = query.where(CalculatedResult.session_id == session_id)
+
+        results = db.execute(query).unique().scalars().all()
+
+        marksheets: List[StudentMarksheetOut] = []
+        for r in results:
+            if r.is_withheld:
+                marksheets.append(
+                    StudentMarksheetOut(
+                        session_id=r.session_id,
+                        session_name=r.session.name,
+                        academic_year=r.session.academic_year,
+                        semester_number=r.session.semester_number,
+                        published_at=r.session.published_at,
+                        student_name=student.user.full_name,
+                        registration_number=student.registration_number,
+                        program_code=student.program.code,
+                        program_name=student.program.name,
+                        is_withheld=True,
+                        total_marks_obtained=None,
+                        total_max_marks=None,
+                        percentage=None,
+                        result_status=None,
+                        notice="Your official result for this examination session has been withheld. Please contact the university examination branch.",
+                        subjects=[],
+                    )
+                )
+            else:
+                subjects = [
+                    StudentSubjectResultOut(
+                        course_code=sd.course.code,
+                        course_name=sd.course.name,
+                        credits=sd.course.credits,
+                        marks_obtained=sd.marks_obtained,
+                        max_marks=sd.max_marks,
+                        percentage=sd.percentage,
+                        is_absent=sd.is_absent,
+                        is_passed=sd.is_passed,
+                        remarks=sd.remarks,
+                    )
+                    for sd in r.subject_details
+                ]
+                marksheets.append(
+                    StudentMarksheetOut(
+                        session_id=r.session_id,
+                        session_name=r.session.name,
+                        academic_year=r.session.academic_year,
+                        semester_number=r.session.semester_number,
+                        published_at=r.session.published_at,
+                        student_name=student.user.full_name,
+                        registration_number=student.registration_number,
+                        program_code=student.program.code,
+                        program_name=student.program.name,
+                        is_withheld=False,
+                        total_marks_obtained=r.total_marks_obtained,
+                        total_max_marks=r.total_max_marks,
+                        percentage=r.percentage,
+                        result_status=r.result_status,
+                        notice=None,
+                        subjects=subjects,
+                    )
+                )
+
+        return marksheets
+

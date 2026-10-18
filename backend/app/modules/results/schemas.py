@@ -68,3 +68,34 @@ class CalculateRequest(BaseModel):
 class WithholdRequest(BaseModel):
     is_withheld: bool = Field(..., description="Set to True to withhold the result, False to release.")
     reason: Optional[str] = Field(None, max_length=255, description="Reason for withholding or releasing.")
+
+
+class StudentSubjectResultOut(BaseModel):
+    course_code: str
+    course_name: str
+    credits: float
+    marks_obtained: float
+    max_marks: float
+    percentage: float
+    is_absent: bool
+    is_passed: bool
+    remarks: Optional[str] = None
+
+
+class StudentMarksheetOut(BaseModel):
+    session_id: uuid.UUID
+    session_name: str
+    academic_year: str
+    semester_number: int
+    published_at: Optional[datetime] = None
+    student_name: str
+    registration_number: str
+    program_code: str
+    program_name: str
+    is_withheld: bool
+    total_marks_obtained: Optional[float] = None
+    total_max_marks: Optional[float] = None
+    percentage: Optional[float] = None
+    result_status: Optional[ResultStatus] = None
+    notice: Optional[str] = None
+    subjects: List[StudentSubjectResultOut] = []
