@@ -36,6 +36,7 @@ class OfficialMark(Base, TimestampMixin):
     is_amended: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False)
 
     session: Mapped["ExaminationSession"] = relationship("ExaminationSession", back_populates="official_marks")
+    course: Mapped["Course"] = relationship("Course", back_populates="official_marks")
     student: Mapped["Student"] = relationship("Student", back_populates="official_marks")
     batch: Mapped["MarkImportBatch"] = relationship("MarkImportBatch", back_populates="official_marks")
     amendments: Mapped[List["MarkAmendment"]] = relationship(

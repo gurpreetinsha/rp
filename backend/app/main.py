@@ -13,6 +13,7 @@ from app.modules.academic.router import router as academic_router
 from app.modules.auth.router import router as auth_router
 from app.modules.users_mgmt.router import router as users_mgmt_router
 from app.modules.imports.router import router as imports_router
+from app.modules.marks.router import router as marks_router
 
 
 @asynccontextmanager
@@ -99,6 +100,7 @@ app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(academic_router, prefix=settings.API_V1_PREFIX)
 app.include_router(users_mgmt_router, prefix=settings.API_V1_PREFIX)
 app.include_router(imports_router, prefix=settings.API_V1_PREFIX)
+app.include_router(marks_router, prefix=settings.API_V1_PREFIX)
 
 
 

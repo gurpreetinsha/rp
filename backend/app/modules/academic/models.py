@@ -58,6 +58,7 @@ class Course(Base, TimestampMixin):
 
     enrollments: Mapped[List["CourseEnrollment"]] = relationship("CourseEnrollment", back_populates="course")
     assignments: Mapped[List["TeacherCourseAssignment"]] = relationship("TeacherCourseAssignment", back_populates="course")
+    official_marks: Mapped[List["OfficialMark"]] = relationship("OfficialMark", back_populates="course")
 
 
 class ExaminationSession(Base, TimestampMixin):

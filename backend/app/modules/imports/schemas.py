@@ -58,3 +58,9 @@ class BatchDetailOut(BatchOut):
     course_name: Optional[str] = None
     teacher_name: Optional[str] = None
     sample_errors: Optional[List[Dict[str, Any]]] = None
+
+
+class BatchRejectRequest(BaseModel):
+    """Payload provided by an Administrator when rejecting a submitted batch."""
+    reason: str = Field(..., min_length=3, max_length=500, examples=["File contains invalid roll numbers for Section B"])
+

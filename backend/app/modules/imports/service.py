@@ -5,14 +5,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.modules.auth.models import User
-from app.modules.users_mgmt.models import Teacher
+from app.modules.users_mgmt.models import Teacher, Student
 from app.modules.imports.models import MarkImportBatch, MarkImportRow
+from app.modules.marks.models import OfficialMark
+from app.modules.audit.models import AuditLog
 from app.modules.imports.schemas import (
     TemplateInfoOut, TemplateColumnInfo, BatchOut, BatchDetailOut, BatchRowOut
 )
 from app.modules.imports.validator import CSVValidationEngine
-from app.core.enums import UserRole
-from app.core.exceptions import NotFoundException, ForbiddenException
+from app.core.enums import UserRole, BatchStatus
+from app.core.models_base import utcnow
+from app.core.exceptions import (
+    NotFoundException, ForbiddenException, ConflictException, ValidationFailedException
+)
 
 
 class ImportsService:
@@ -217,3 +222,131 @@ class ImportsService:
 
         rows = db.execute(query.order_by(MarkImportRow.row_number)).scalars().all()
         return [BatchRowOut.model_validate(r) for r in rows]
+
+    @staticmethod
+    def approve_batch(db: Session, batch_id: uuid.UUID, admin_user: User) -> BatchDetailOut:
+        """
+        Transactional administrative approval:
+        - Transfers staged rows from mark_import_rows to official_marks.
+        - Updates batch status to IMPORTED.
+        - Creates immutable audit record.
+        """
+        batch = db.get(MarkImportBatch, batch_id)
+        if not batch:
+            raise NotFoundException(f"Import batch with ID {batch_id} not found")
+
+        if batch.status == BatchStatus.IMPORTED:
+            raise ConflictException("This batch has already been approved and imported into official records")
+
+        if batch.status == BatchStatus.VALIDATION_FAILED:
+            raise ValidationFailedException(
+                "Cannot approve a batch with validation errors. The faculty member must correct and re-upload the file."
+            )
+
+        if batch.status != BatchStatus.PENDING_APPROVAL:
+            raise ConflictException(f"Cannot approve batch in '{batch.status.value}' status")
+
+        # Check existing official marks
+        existing = db.execute(
+            select(OfficialMark).where(
+                OfficialMark.session_id == batch.session_id,
+                OfficialMark.course_id == batch.course_id,
+            )
+        ).first()
+        if existing:
+            raise ConflictException("Official marks already exist for this course in this session")
+
+        # Staged rows
+        staged_rows = db.execute(
+            select(MarkImportRow).where(MarkImportRow.batch_id == batch.id, MarkImportRow.is_valid == True)
+        ).scalars().all()
+
+        students_by_reg = {
+            s.registration_number: s
+            for s in db.execute(select(Student)).scalars().all()
+        }
+
+        for row in staged_rows:
+            student = students_by_reg.get(row.raw_registration_number.strip().upper())
+            if not student:
+                raise ValidationFailedException(
+                    f"Student with registration number '{row.raw_registration_number}' not found during import"
+                )
+
+            marks_val = 0.0
+            if not row.is_absent and row.raw_marks_obtained:
+                marks_val = float(row.raw_marks_obtained)
+
+            official_mark = OfficialMark(
+                session_id=batch.session_id,
+                course_id=batch.course_id,
+                student_id=student.id,
+                batch_id=batch.id,
+                marks_obtained=marks_val,
+                max_marks=batch.max_marks,
+                is_absent=row.is_absent,
+                is_amended=False,
+            )
+            db.add(official_mark)
+
+        # Update batch status
+        batch.status = BatchStatus.IMPORTED
+        batch.reviewed_by_admin_id = admin_user.id
+        batch.reviewed_at = utcnow()
+
+        # Audit log
+        audit_entry = AuditLog(
+            user_id=admin_user.id,
+            action="IMPORT_BATCH_APPROVED",
+            entity_type="mark_import_batches",
+            entity_id=str(batch.id),
+            details={
+                "session_id": str(batch.session_id),
+                "course_id": str(batch.course_id),
+                "total_official_marks_imported": len(staged_rows),
+                "max_marks": batch.max_marks,
+            },
+        )
+        db.add(audit_entry)
+
+        db.commit()
+        db.refresh(batch)
+        return ImportsService.get_batch(db, batch.id, admin_user)
+
+    @staticmethod
+    def reject_batch(db: Session, batch_id: uuid.UUID, reason: str, admin_user: User) -> BatchDetailOut:
+        """
+        Administrative rejection:
+        - Marks batch as REJECTED with mandatory reason.
+        - Staged rows remain for review but never become official marks.
+        - Creates audit record.
+        """
+        batch = db.get(MarkImportBatch, batch_id)
+        if not batch:
+            raise NotFoundException(f"Import batch with ID {batch_id} not found")
+
+        if batch.status == BatchStatus.IMPORTED:
+            raise ConflictException("Cannot reject a batch that has already been imported into official records")
+
+        batch.status = BatchStatus.REJECTED
+        batch.rejection_reason = reason.strip()
+        batch.reviewed_by_admin_id = admin_user.id
+        batch.reviewed_at = utcnow()
+
+        audit_entry = AuditLog(
+            user_id=admin_user.id,
+            action="IMPORT_BATCH_REJECTED",
+            entity_type="mark_import_batches",
+            entity_id=str(batch.id),
+            details={
+                "reason": reason.strip(),
+                "session_id": str(batch.session_id),
+                "course_id": str(batch.course_id),
+            },
+        )
+        db.add(audit_entry)
+
+        db.commit()
+        db.refresh(batch)
+        return ImportsService.get_batch(db, batch.id, admin_user)
+

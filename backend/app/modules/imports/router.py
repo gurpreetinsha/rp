@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.modules.auth.models import User
-from app.modules.auth.dependencies import require_teacher, require_staff
+from app.modules.auth.dependencies import require_teacher, require_staff, require_admin
 from app.modules.imports.schemas import (
-    TemplateInfoOut, BatchOut, BatchDetailOut, BatchRowOut
+    TemplateInfoOut, BatchOut, BatchDetailOut, BatchRowOut, BatchRejectRequest
 )
 from app.modules.imports.service import ImportsService
 
@@ -87,3 +87,25 @@ def get_batch_rows(
         current_user=current_staff,
         errors_only=errors_only,
     )
+
+
+@router.post("/batches/{batch_id}/approve", response_model=BatchDetailOut)
+def approve_batch(
+    batch_id: uuid.UUID,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin-only: formally approve a pending batch and atomically import rows into official academic records."""
+    return ImportsService.approve_batch(db, batch_id, current_admin)
+
+
+@router.post("/batches/{batch_id}/reject", response_model=BatchDetailOut)
+def reject_batch(
+    batch_id: uuid.UUID,
+    payload: BatchRejectRequest,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin-only: reject a mark batch with a mandatory written explanation."""
+    return ImportsService.reject_batch(db, batch_id, payload.reason, current_admin)
+
