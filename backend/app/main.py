@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db, engine
 from app.core.exceptions import SRPException
+from app.modules.academic.router import router as academic_router
 
 
 @asynccontextmanager
@@ -88,3 +89,8 @@ def detailed_health_check(db: Session = Depends(get_db)) -> dict:
         "database": db_status,
         "environment": settings.ENVIRONMENT,
     }
+
+
+# Mount Domain Routers
+app.include_router(academic_router, prefix=settings.API_V1_PREFIX)
+
