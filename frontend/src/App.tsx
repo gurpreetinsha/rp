@@ -8,21 +8,20 @@ import { StudentDashboard } from './components/StudentDashboard';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<UserSession['user'] | null>(null);
-  const [initializing, setInitializing] = useState<boolean>(true);
+  const [initializing, setInitializing] = useState<boolean>(() => !!localStorage.getItem('srp_token'));
 
   useEffect(() => {
     const token = localStorage.getItem('srp_token');
-    if (token) {
-      api.getMe()
-        .then((user) => setCurrentUser(user))
-        .catch(() => {
-          localStorage.removeItem('srp_token');
-          setCurrentUser(null);
-        })
-        .finally(() => setInitializing(false));
-    } else {
-      setInitializing(false);
+    if (!token) {
+      return;
     }
+    api.getMe()
+      .then((user) => setCurrentUser(user))
+      .catch(() => {
+        localStorage.removeItem('srp_token');
+        setCurrentUser(null);
+      })
+      .finally(() => setInitializing(false));
   }, []);
 
   const handleLoginSuccess = (session: UserSession) => {

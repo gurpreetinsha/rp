@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 
 export const TeacherDashboard: React.FC = () => {
@@ -14,11 +14,7 @@ export const TeacherDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [asgn, sess] = await Promise.all([
         api.getTeacherAssignments(),
@@ -26,12 +22,16 @@ export const TeacherDashboard: React.FC = () => {
       ]);
       setAssignments(asgn);
       setSessions(sess);
-      if (sess.length > 0) setSelectedSession(sess[0].id);
-      if (asgn.length > 0) setSelectedCourse(asgn[0].course_id);
+      if (sess.length > 0) setSelectedSession((prev) => prev || sess[0].id);
+      if (asgn.length > 0) setSelectedCourse((prev) => prev || asgn[0].course_id);
     } catch (err: any) {
       setError(err.message || 'Failed to load teacher assignments.');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

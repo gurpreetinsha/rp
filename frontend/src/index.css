@@ -522,3 +522,87 @@ h1, h2, h3, h4, h5, h6 {
     gap: 0.75rem;
   }
 }
+
+/* Official Print & PDF Marksheet Stylesheet */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11pt;
+  }
+
+  .navbar,
+  .btn,
+  button,
+  select,
+  .form-select,
+  .demo-persona-banner,
+  .tabs-nav {
+    display: none !important;
+  }
+
+  .app-container, .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .marksheet-card {
+    border: 2px solid #000000 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 0 !important;
+    page-break-inside: avoid;
+  }
+
+  .marksheet-header {
+    background: #f8fafc !important;
+    border-bottom: 2px solid #000000 !important;
+    color: #000000 !important;
+    padding: 1.5rem !important;
+  }
+
+  .marksheet-meta-grid {
+    background: #f1f5f9 !important;
+    border-bottom: 1px solid #94a3b8 !important;
+    color: #000000 !important;
+    padding: 1rem 1.5rem !important;
+  }
+
+  .marksheet-meta-grid div,
+  .marksheet-meta-grid .stat-label {
+    color: #334155 !important;
+  }
+
+  .data-table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  .data-table th,
+  .data-table td {
+    border: 1px solid #cbd5e1 !important;
+    color: #000000 !important;
+    background: transparent !important;
+    padding: 8px 12px !important;
+  }
+
+  .data-table th {
+    background: #f1f5f9 !important;
+    font-weight: bold !important;
+  }
+
+  .badge-pass {
+    border: 1px solid #16a34a !important;
+    color: #16a34a !important;
+    background: transparent !important;
+  }
+
+  .badge-fail {
+    border: 1px solid #dc2626 !important;
+    color: #dc2626 !important;
+    background: transparent !important;
+  }
+}
+

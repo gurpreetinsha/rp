@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 
 export const AdminDashboard: React.FC = () => {
@@ -29,29 +29,24 @@ export const AdminDashboard: React.FC = () => {
   const [withholdTarget, setWithholdTarget] = useState<any | null>(null);
   const [withholdReason, setWithholdReason] = useState<string>('');
 
-  useEffect(() => {
-    loadSessions();
+  const showMessage = useCallback((text: string, type: 'success' | 'danger') => {
+    setActionMsg({ text, type });
+    setTimeout(() => setActionMsg(null), 5000);
   }, []);
 
-  useEffect(() => {
-    if (selectedSessionId) {
-      loadSessionData(selectedSessionId);
-    }
-  }, [selectedSessionId, activeTab]);
-
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       const sess = await api.getSessions();
       setSessions(sess);
-      if (sess.length > 0 && !selectedSessionId) {
-        setSelectedSessionId(sess[0].id);
+      if (sess.length > 0) {
+        setSelectedSessionId((prev) => prev || sess[0].id);
       }
     } catch (err: any) {
       showMessage(err.message || 'Failed to load initial academic data.', 'danger');
     }
-  };
+  }, [showMessage]);
 
-  const loadSessionData = async (sessId: string) => {
+  const loadSessionData = useCallback(async (sessId: string) => {
     setLoading(true);
     try {
       if (activeTab === 'calculate_publish') {
@@ -71,17 +66,22 @@ export const AdminDashboard: React.FC = () => {
         const logs = await api.getAuditLogs(100);
         setAuditLogs(logs);
       }
-    } catch (err: any) {
-      // Non-blocking
+    } catch {
+      // Non-blocking error handling
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const showMessage = (text: string, type: 'success' | 'danger') => {
-    setActionMsg({ text, type });
-    setTimeout(() => setActionMsg(null), 5000);
-  };
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      loadSessionData(selectedSessionId);
+    }
+  }, [selectedSessionId, activeTab, loadSessionData]);
 
   // 1. Session Status Change
   const handleStatusChange = async (newStatus: string) => {

@@ -38,9 +38,13 @@ class ConflictException(SRPException):
         super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
+# Modern Starlette HTTP_422_UNPROCESSABLE_CONTENT with direct integer fallback
+HTTP_422_CODE = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+
+
 class ValidationFailedException(SRPException):
     def __init__(self, detail: str = "Validation failed"):
-        super().__init__(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+        super().__init__(status_code=HTTP_422_CODE, detail=detail)
 
 
 ValidationException = ValidationFailedException
