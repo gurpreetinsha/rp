@@ -60,11 +60,22 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   // Authentication
-  login: (email: string, password: string): Promise<UserSession> =>
-    request<UserSession>('/auth/login', {
+  login: async (email: string, password: string): Promise<UserSession> => {
+    const data = await request<any>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
-    }),
+    });
+    return {
+      token: data.token || data.access_token,
+      user: data.user || {
+        id: String(data.user_id),
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role,
+        is_active: true,
+      },
+    };
+  },
 
   getMe: () => request<UserSession['user']>('/auth/me'),
 
