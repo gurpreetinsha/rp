@@ -162,47 +162,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
           </div>
 
           {/* Hero Visual Preview */}
-          <div
-            className="reveal-on-scroll"
-            style={{
-              marginTop: '48px',
-              maxWidth: '960px',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              border: '1px solid var(--border-medium)',
-              borderRadius: 'var(--radius-2xl)',
-              boxShadow: 'var(--shadow-float)',
-              overflow: 'hidden',
-              backgroundColor: '#ffffff'
-            }}
-          >
+          <div className="hero-mock-container reveal-on-scroll">
             {/* Mock Window Header */}
-            <div
-              style={{
-                backgroundColor: 'var(--bg-surface-elevated)',
-                borderBottom: '1px solid var(--border-subtle)',
-                padding: '12px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }} />
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
-                <span style={{ marginLeft: '12px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            <div className="hero-mock-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block', flexShrink: 0 }} />
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block', flexShrink: 0 }} />
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', flexShrink: 0 }} />
+                <span className="hero-mock-url">
                   srp.university.edu/records/verification/REG2024001
                 </span>
               </div>
-              <span className="badge badge-pass" style={{ fontSize: '11px' }}>
+              <span className="badge badge-pass" style={{ fontSize: '11px', flexShrink: 0 }}>
                 Board Approved
               </span>
             </div>
 
             {/* Mock Marksheet Content */}
-            <div style={{ padding: '24px 32px', textAlign: 'left' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+            <div className="hero-mock-body">
+              <div className="hero-mock-meta">
                 <div>
                   <div style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
                     Official Academic Transcript
@@ -215,12 +193,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div style={{ textAlign: 'right' }}>
+                <div className="hero-mock-gpa-grid">
+                  <div className="hero-mock-gpa-item">
                     <div style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Semester GPA</div>
                     <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--primary)' }}>3.94</div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div className="hero-mock-gpa-item">
                     <div style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Cumulative CGPA</div>
                     <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--success)' }}>3.91</div>
                   </div>
@@ -463,20 +441,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
             </p>
           </div>
 
-          <div
-            className="card reveal-on-scroll"
-            style={{
-              maxWidth: '680px',
-              margin: '0 auto',
-              padding: '32px'
-            }}
-          >
+          <div className="card verification-card reveal-on-scroll">
             <form onSubmit={handleVerifyDemo}>
               <div className="form-group">
                 <label className="form-label" htmlFor="verification-input">
                   Enter student registration number
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="verification-form-row">
                   <input
                     id="verification-input"
                     type="text"
@@ -486,7 +457,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                     placeholder="e.g. REG2024001"
                     required
                   />
-                  <button type="submit" className="btn btn-primary">
+                  <button type="submit" className="btn btn-primary verification-submit-btn">
                     Verify marksheet
                   </button>
                 </div>

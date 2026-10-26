@@ -12,6 +12,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) =
   const [healthStatus, setHealthStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [diagData, setDiagData] = useState<any>(null);
   const [testing, setTesting] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const testConnection = async () => {
     setTesting(true);
@@ -38,6 +39,36 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) =
     return () => clearInterval(timer);
   }, []);
 
+  // Prevent background scroll when mobile menu is active
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  const handleMobileNavClick = (hash: string) => {
+    setMobileMenuOpen(false);
+    const element = document.querySelector(hash);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleTriggerLogin = () => {
+    setMobileMenuOpen(false);
+    if (onOpenLogin) {
+      onOpenLogin();
+    } else {
+      const el = document.getElementById('portal-access');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="floating-navbar-wrapper">
       <header className="navbar">
@@ -51,12 +82,12 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) =
             </div>
             <div>
               <div className="brand-title">Student Result Portal</div>
-              <div className="brand-subtitle">Academic marks and publication system</div>
+              <div className="brand-subtitle hide-on-mobile">Academic marks and publication system</div>
             </div>
           </a>
 
           {!user && (
-            <nav className="nav-menu-links" aria-label="Main navigation">
+            <nav className="nav-menu-links hide-on-tablet-mobile" aria-label="Main navigation">
               <a href="#overview" className="nav-link-item">Overview</a>
               <a href="#benefits" className="nav-link-item">Benefits</a>
               <a href="#how-it-works" className="nav-link-item">How it works</a>
@@ -65,12 +96,12 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) =
             </nav>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {/* System Status Pill */}
             <button
               type="button"
               onClick={() => setShowDiagModal(true)}
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm status-pill-btn"
               style={{
                 borderRadius: '9999px',
                 padding: '4px 10px',
@@ -90,19 +121,19 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) =
                   display: 'inline-block'
                 }}
               />
-              <span>
+              <span className="status-pill-text">
                 {healthStatus === 'connected'
                   ? `Online (${diagData?.latency || 0}ms)`
                   : healthStatus === 'checking'
                   ? 'Connecting...'
-                  : 'Connection issue'}
+                  : 'Issue'}
               </span>
             </button>
 
             {user ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)' }}>{user.full_name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ textAlign: 'right' }} className="hide-on-mobile">
+                  <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-main)' }}>{user.full_name}</div>
                   <span className={`badge ${user.role === 'ADMIN' ? 'badge-pass' : user.role === 'TEACHER' ? 'badge-info' : 'badge-warning'}`}>
                     {user.role}
                   </span>
@@ -112,23 +143,120 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) =
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => {
-                  if (onOpenLogin) {
-                    onOpenLogin();
-                  } else {
-                    const el = document.getElementById('portal-access');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-              >
-                Access portal
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm hide-on-tablet-mobile"
+                  onClick={handleTriggerLogin}
+                >
+                  Access portal
+                </button>
+
+                {/* Mobile Menu Toggle Button */}
+                <button
+                  type="button"
+                  className={`mobile-menu-toggle ${mobileMenuOpen ? 'is-open' : ''}`}
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                  aria-expanded={mobileMenuOpen}
+                >
+                  <span className="menu-toggle-line line-1" />
+                  <span className="menu-toggle-line line-2" />
+                  <span className="menu-toggle-line line-3" />
+                </button>
+              </>
             )}
           </div>
         </div>
+
+        {/* FULL HEIGHT MOBILE MENU PANEL (Per landing-page-design B7 specification) */}
+        {mobileMenuOpen && (
+          <div className="mobile-nav-panel" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+            <div className="mobile-nav-header">
+              <div className="brand">
+                <div className="brand-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                    <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                  </svg>
+                </div>
+                <div className="brand-title">Student Result Portal</div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close menu"
+                style={{ width: '36px', height: '36px', padding: 0, borderRadius: 'var(--radius-lg)' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <nav className="mobile-nav-links">
+              <button
+                type="button"
+                className="mobile-nav-item item-1"
+                onClick={() => handleMobileNavClick('#overview')}
+              >
+                Overview
+              </button>
+              <button
+                type="button"
+                className="mobile-nav-item item-2"
+                onClick={() => handleMobileNavClick('#benefits')}
+              >
+                Benefits
+              </button>
+              <button
+                type="button"
+                className="mobile-nav-item item-3"
+                onClick={() => handleMobileNavClick('#how-it-works')}
+              >
+                How it works
+              </button>
+              <button
+                type="button"
+                className="mobile-nav-item item-4"
+                onClick={() => handleMobileNavClick('#verification')}
+              >
+                Verification
+              </button>
+              <button
+                type="button"
+                className="mobile-nav-item item-5"
+                onClick={() => handleMobileNavClick('#faq')}
+              >
+                FAQ
+              </button>
+
+              <div className="mobile-nav-action item-6">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ width: '100%', padding: '12px', fontSize: '16px' }}
+                  onClick={handleTriggerLogin}
+                >
+                  Access portal
+                </button>
+              </div>
+            </nav>
+
+            <div className="mobile-nav-footer">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: healthStatus === 'connected' ? '#16a34a' : '#d97706'
+                  }}
+                />
+                <span>System status: {healthStatus === 'connected' ? 'Connected and operational' : 'Checking status'}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Diagnostics Modal */}
         {showDiagModal && (
