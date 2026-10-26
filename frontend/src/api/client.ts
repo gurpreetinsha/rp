@@ -1,4 +1,4 @@
-const API_BASE = '/api/v1';
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '');
 
 export interface UserSession {
   token: string;
@@ -59,6 +59,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  // System Health & Connectivity Diagnostics
+  checkHealth: async () => {
+    const start = performance.now();
+    try {
+      const res = await request<any>('/health');
+      const latency = Math.round(performance.now() - start);
+      return { ok: true, data: res, latency, apiBase: API_BASE };
+    } catch (err: any) {
+      const latency = Math.round(performance.now() - start);
+      return { ok: false, error: err.message || 'Connection failed', latency, apiBase: API_BASE };
+    }
+  },
   // Authentication
   login: async (email: string, password: string): Promise<UserSession> => {
     const data = await request<any>('/auth/login', {
