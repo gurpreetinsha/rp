@@ -3,9 +3,10 @@ import { api, type UserSession } from '../api/client';
 
 interface LoginViewProps {
   onLoginSuccess: (session: UserSession) => void;
+  isEmbedded?: boolean;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, isEmbedded = false }) => {
   const [isBootstrapMode, setIsBootstrapMode] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checkingSetup, setCheckingSetup] = useState(true);
@@ -42,7 +43,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setError(null);
     setLoading(true);
     try {
-      const session = await api.login(email, password);
+      const session = await api.login(email.trim(), password);
       localStorage.setItem('srp_token', session.token);
       onLoginSuccess(session);
     } catch (err: any) {
@@ -60,20 +61,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Password must contain at least 8 characters');
       return;
     }
 
     setLoading(true);
     try {
       await api.bootstrapAdmin({
-        email,
+        email: email.trim(),
         password,
-        full_name: fullName,
+        full_name: fullName.trim(),
       });
-      setSuccessMsg('Administrator account registered! Authenticating...');
-      // Automatically log in
-      const session = await api.login(email, password);
+      setSuccessMsg('Administrator account registered. Authenticating...');
+      const session = await api.login(email.trim(), password);
       localStorage.setItem('srp_token', session.token);
       onLoginSuccess(session);
     } catch (err: any) {
@@ -85,99 +85,120 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
   if (checkingSetup) {
     return (
-      <div style={{ maxWidth: '480px', margin: '4rem auto', textAlign: 'center', color: 'var(--text-muted)' }}>
+      <div style={{ maxWidth: '440px', margin: '48px auto', textAlign: 'center', color: 'var(--text-muted)' }}>
         <p>Connecting to portal services...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '3rem auto' }}>
-      <div className="glass-panel" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🏛️</div>
-        <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
-          {isBootstrapMode ? 'System Setup: Administrator' : 'Welcome to SRP'}
-        </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.75rem' }}>
-          {isBootstrapMode
-            ? 'Initialize the primary institution administrator account for your portal.'
-            : 'Official university examination marks evaluation, calculation, and result publication portal.'}
-        </p>
+    <div id="portal-access" style={{ maxWidth: '460px', margin: isEmbedded ? '0 auto' : '48px auto' }}>
+      <div className="card" style={{ padding: '32px', textAlign: 'left' }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: 'var(--radius-xl)',
+              background: 'var(--primary-subtle)',
+              color: 'var(--primary)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '12px'
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '6px' }}>
+            {isBootstrapMode ? 'System setup: Administrator' : 'Portal authentication'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+            {isBootstrapMode
+              ? 'Initialize the primary institution administrator profile.'
+              : 'Enter institutional credentials to view or publish academic records.'}
+          </p>
+        </div>
 
         {needsSetup && (
           <div style={{
-            padding: '0.75rem 1rem',
-            background: 'rgba(56, 189, 248, 0.1)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--accent-cyan)',
-            fontSize: '0.85rem',
-            marginBottom: '1.25rem',
-            textAlign: 'left'
+            padding: '12px',
+            background: 'var(--info-bg)',
+            border: '1px solid var(--info-border)',
+            borderRadius: 'var(--radius-lg)',
+            color: 'var(--info)',
+            fontSize: '13px',
+            marginBottom: '16px'
           }}>
-            ℹ️ <strong>Clean Installation Detected:</strong> Please register your institution's primary Super-Administrator below.
+            <strong>Clean installation detected:</strong> Please register your institution primary super administrator below.
           </div>
         )}
 
         {error && (
           <div style={{
-            padding: '0.75rem 1rem',
+            padding: '12px',
             background: 'var(--danger-bg)',
             border: '1px solid var(--danger-border)',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: 'var(--radius-lg)',
             color: 'var(--danger)',
-            fontSize: '0.85rem',
-            marginBottom: '1.25rem',
-            textAlign: 'left'
+            fontSize: '13px',
+            marginBottom: '16px'
           }}>
-            ⚠️ {error}
+            <strong>Authentication notice:</strong> {error}
           </div>
         )}
 
         {successMsg && (
           <div style={{
-            padding: '0.75rem 1rem',
+            padding: '12px',
             background: 'var(--success-bg)',
             border: '1px solid var(--success-border)',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: 'var(--radius-lg)',
             color: 'var(--success)',
-            fontSize: '0.85rem',
-            marginBottom: '1.25rem',
-            textAlign: 'left'
+            fontSize: '13px',
+            marginBottom: '16px'
           }}>
-            ✅ {successMsg}
+            {successMsg}
           </div>
         )}
 
         {isBootstrapMode ? (
-          <form onSubmit={handleBootstrap} style={{ textAlign: 'left' }}>
+          <form onSubmit={handleBootstrap}>
             <div className="form-group">
-              <label className="form-label">Full Name & Title</label>
+              <label className="form-label" htmlFor="setup-name">Full name and academic title</label>
               <input
+                id="setup-name"
                 type="text"
                 className="form-input"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Dr. Jane Doe, Registrar"
+                placeholder="Dr. Eleanor Vance, Dean"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Official Administrator Email</label>
+              <label className="form-label" htmlFor="setup-email">Administrator email</label>
               <input
+                id="setup-email"
                 type="email"
                 className="form-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. admin@your-institution.edu"
+                placeholder="admin@institution.edu"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Master Password</label>
+              <label className="form-label" htmlFor="setup-password">Master password</label>
               <input
+                id="setup-password"
                 type="password"
                 className="form-input"
                 value={password}
@@ -188,8 +209,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm Master Password</label>
+              <label className="form-label" htmlFor="setup-confirm">Confirm master password</label>
               <input
+                id="setup-confirm"
                 type="password"
                 className="form-input"
                 value={confirmPassword}
@@ -202,40 +224,44 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}
+              style={{ width: '100%', marginTop: '8px' }}
               disabled={loading}
             >
-              {loading ? 'Initializing Administrator...' : 'Create Super-Administrator Account'}
+              {loading ? 'Initializing administrator...' : 'Create super administrator account'}
             </button>
 
             {!needsSetup && (
               <button
                 type="button"
-                className="btn btn-secondary"
-                style={{ width: '100%', marginTop: '0.75rem' }}
+                className="btn btn-secondary btn-sm"
+                style={{ width: '100%', marginTop: '12px' }}
                 onClick={() => { setIsBootstrapMode(false); setError(null); }}
               >
-                Back to Standard Login
+                Back to standard sign in
               </button>
             )}
           </form>
         ) : (
-          <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
+          <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label className="form-label">Academic Email Address</label>
+              <label className="form-label" htmlFor="login-email">Institutional email address</label>
               <input
+                id="login-email"
                 type="email"
                 className="form-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. user@institution.edu"
+                placeholder="user@institution.edu"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label" htmlFor="login-password">Password</label>
+              </div>
               <input
+                id="login-password"
                 type="password"
                 className="form-input"
                 value={password}
@@ -248,19 +274,27 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}
+              style={{ width: '100%', marginTop: '8px' }}
               disabled={loading}
             >
-              {loading ? 'Authenticating...' : 'Sign In to Portal'}
+              {loading ? 'Authenticating credentials...' : 'Sign in to portal'}
             </button>
 
-            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+            <div style={{ marginTop: '20px', textAlign: 'center', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
               <button
                 type="button"
-                style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--primary)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textDecoration: 'none'
+                }}
                 onClick={() => { setIsBootstrapMode(true); setError(null); }}
               >
-                Need to initialize initial Super-Admin? Click here
+                Initialize master administrator profile
               </button>
             </div>
           </form>

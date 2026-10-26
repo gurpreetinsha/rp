@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api, type UserSession } from './api/client';
 import { Navbar } from './components/Navbar';
-import { LoginView } from './components/LoginView';
+import { LandingPage } from './components/LandingPage';
 import { AdminDashboard } from './components/AdminDashboard';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { StudentDashboard } from './components/StudentDashboard';
@@ -26,19 +26,21 @@ export function App() {
 
   const handleLoginSuccess = (session: UserSession) => {
     setCurrentUser(session.user);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLogout = () => {
     localStorage.removeItem('srp_token');
     setCurrentUser(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (initializing) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🎓</div>
-          <div style={{ color: 'var(--text-muted)' }}>Loading Student Result Portal...</div>
+          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🎓</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '15px', fontWeight: 600 }}>Loading Student Result Portal...</div>
         </div>
       </div>
     );
@@ -51,27 +53,34 @@ export function App() {
         onLogout={handleLogout}
       />
 
-      <main className="main-content">
+      <main className="main-content" id="main-content">
         {!currentUser ? (
-          <LoginView onLoginSuccess={handleLoginSuccess} />
-        ) : currentUser.role === 'ADMIN' ? (
-          <AdminDashboard />
-        ) : currentUser.role === 'TEACHER' ? (
-          <TeacherDashboard />
+          <LandingPage onLoginSuccess={handleLoginSuccess} />
         ) : (
-          <StudentDashboard />
+          <div className="content-container" style={{ padding: '32px 24px' }}>
+            {currentUser.role === 'ADMIN' ? (
+              <AdminDashboard />
+            ) : currentUser.role === 'TEACHER' ? (
+              <TeacherDashboard />
+            ) : (
+              <StudentDashboard />
+            )}
+          </div>
         )}
       </main>
 
-      <footer style={{
-        textAlign: 'center',
-        padding: '2rem 1rem',
-        borderTop: '1px solid var(--border-subtle)',
-        fontSize: '0.8rem',
-        color: 'var(--text-dim)',
-      }}>
-        Student Result Portal (SRP) &bull; Enterprise Monolith Architecture &bull; All Actions Audited
-      </footer>
+      {currentUser && (
+        <footer style={{
+          textAlign: 'center',
+          padding: '32px 16px',
+          borderTop: '1px solid var(--border-subtle)',
+          fontSize: '13px',
+          color: 'var(--text-dim)',
+          backgroundColor: 'var(--bg-surface-elevated)'
+        }}>
+          Student Result Portal &bull; Enterprise Academic Architecture &bull; All Actions Audited
+        </footer>
+      )}
     </div>
   );
 }

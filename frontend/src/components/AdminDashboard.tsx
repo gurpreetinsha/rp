@@ -705,7 +705,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
               <div className="stat-card">
                 <div className="stat-label">Withheld Records</div>
-                <div className="stat-value" style={{ color: summary.total_withheld > 0 ? 'var(--warning)' : '#fff' }}>
+                <div className="stat-value" style={{ color: summary.total_withheld > 0 ? 'var(--warning)' : 'var(--text-main)' }}>
                   {summary.total_withheld}
                 </div>
                 <div className="stat-subtext">Masked from student portal</div>

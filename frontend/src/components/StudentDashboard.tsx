@@ -105,7 +105,7 @@ export const StudentDashboard: React.FC = () => {
                 color: 'var(--text-muted)',
                 fontSize: '0.85rem'
               }}>
-                Registration No: <strong style={{ color: '#fff' }}>{currentSheet.registration_number}</strong> | Session: <strong style={{ color: '#fff' }}>{currentSheet.session_name}</strong>
+                Registration No: <strong style={{ color: 'var(--text-main)' }}>{currentSheet.registration_number}</strong> | Session: <strong style={{ color: 'var(--text-main)' }}>{currentSheet.session_name}</strong>
               </div>
             </div>
           ) : (
@@ -113,7 +113,7 @@ export const StudentDashboard: React.FC = () => {
             <div className="marksheet-card">
               <div className="marksheet-header">
                 <div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: '0.35rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, marginBottom: '0.35rem' }}>
                     University Examination Board
                   </div>
                   <h2 style={{ fontSize: '1.65rem', marginBottom: '0.25rem' }}>{currentSheet.session_name}</h2>
@@ -134,17 +134,17 @@ export const StudentDashboard: React.FC = () => {
               <div className="marksheet-meta-grid">
                 <div>
                   <div className="stat-label">Student Name</div>
-                  <div style={{ fontWeight: 600, fontSize: '1rem', color: '#fff' }}>{currentSheet.student_name}</div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)' }}>{currentSheet.student_name}</div>
                 </div>
                 <div>
                   <div className="stat-label">Registration Number</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '1rem', color: '#fff' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)' }}>
                     {currentSheet.registration_number}
                   </div>
                 </div>
                 <div>
                   <div className="stat-label">Academic Program</div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)' }}>
                     {currentSheet.program_name} ({currentSheet.program_code})
                   </div>
                 </div>
