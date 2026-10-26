@@ -16,7 +16,6 @@ from app.modules.imports.router import router as imports_router
 from app.modules.marks.router import router as marks_router
 from app.modules.results.router import router as results_router
 from app.modules.audit.router import router as audit_router
-from app.modules.database_admin.router import router as database_admin_router
 
 
 @asynccontextmanager
@@ -117,7 +116,6 @@ app.include_router(imports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(marks_router, prefix=settings.API_V1_PREFIX)
 app.include_router(results_router, prefix=settings.API_V1_PREFIX)
 app.include_router(audit_router, prefix=settings.API_V1_PREFIX)
-app.include_router(database_admin_router, prefix=settings.API_V1_PREFIX)
 
 
 

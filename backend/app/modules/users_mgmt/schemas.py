@@ -15,13 +15,8 @@ class TeacherCreate(BaseModel):
 
 
 class TeacherUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=2, max_length=150)
-    email: Optional[EmailStr] = None
-    employee_id: Optional[str] = Field(None, min_length=2, max_length=50)
-    department_id: Optional[uuid.UUID] = None
     designation: Optional[str] = Field(None, max_length=100)
     is_active: Optional[bool] = None
-    password: Optional[str] = Field(None, min_length=8, max_length=128)
 
 
 class TeacherOut(BaseModel):
@@ -51,14 +46,9 @@ class StudentCreate(BaseModel):
 
 
 class StudentUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=2, max_length=150)
-    email: Optional[EmailStr] = None
-    registration_number: Optional[str] = Field(None, min_length=3, max_length=50)
     roll_number: Optional[str] = Field(None, max_length=50)
-    program_id: Optional[uuid.UUID] = None
     current_semester: Optional[int] = Field(None, ge=1, le=12)
     is_active: Optional[bool] = None
-    password: Optional[str] = Field(None, min_length=8, max_length=128)
 
 
 class StudentOut(BaseModel):

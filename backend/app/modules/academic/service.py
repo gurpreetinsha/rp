@@ -8,12 +8,10 @@ from app.modules.academic.schemas import (
     DepartmentCreate, DepartmentUpdate,
     ProgramCreate, ProgramUpdate,
     CourseCreate, CourseUpdate,
-    ExaminationSessionCreate, ExaminationSessionUpdate,
+    ExaminationSessionCreate,
 )
 from app.core.exceptions import NotFoundException, ConflictException
 from app.core.enums import SessionStatus
-from app.modules.users_mgmt.models import Teacher, Student, CourseEnrollment, TeacherCourseAssignment
-from app.modules.marks.models import OfficialMark
 
 
 class AcademicService:
@@ -66,18 +64,6 @@ class AcademicService:
         db.commit()
         db.refresh(dept)
         return dept
-
-    @staticmethod
-    def delete_department(db: Session, department_id: uuid.UUID) -> None:
-        dept = AcademicService.get_department(db, department_id)
-        has_programs = db.execute(select(Program).where(Program.department_id == department_id)).scalars().first()
-        if has_programs:
-            raise ConflictException("Cannot delete department with associated academic programs. Remove or reassign programs first.")
-        has_teachers = db.execute(select(Teacher).where(Teacher.department_id == department_id)).scalars().first()
-        if has_teachers:
-            raise ConflictException("Cannot delete department with affiliated teachers. Remove or reassign teachers first.")
-        db.delete(dept)
-        db.commit()
 
     # ---------------- Program Operations ----------------
     @staticmethod
@@ -139,15 +125,6 @@ class AcademicService:
         db.refresh(prog)
         return prog
 
-    @staticmethod
-    def delete_program(db: Session, program_id: uuid.UUID) -> None:
-        prog = AcademicService.get_program(db, program_id)
-        has_students = db.execute(select(Student).where(Student.program_id == program_id)).scalars().first()
-        if has_students:
-            raise ConflictException("Cannot delete program with enrolled students. Remove or reassign students first.")
-        db.delete(prog)
-        db.commit()
-
     # ---------------- Course Operations ----------------
     @staticmethod
     def create_course(db: Session, data: CourseCreate) -> Course:
@@ -202,22 +179,6 @@ class AcademicService:
         db.refresh(course)
         return course
 
-    @staticmethod
-    def delete_course(db: Session, course_id: uuid.UUID) -> None:
-        course = AcademicService.get_course(db, course_id)
-        has_marks = db.execute(select(OfficialMark).where(OfficialMark.course_id == course_id)).scalars().first()
-        if has_marks:
-            raise ConflictException("Cannot delete course with recorded official marks.")
-        # Clean up enrollments and assignments for this course
-        enrollments = db.execute(select(CourseEnrollment).where(CourseEnrollment.course_id == course_id)).scalars().all()
-        for e in enrollments:
-            db.delete(e)
-        assignments = db.execute(select(TeacherCourseAssignment).where(TeacherCourseAssignment.course_id == course_id)).scalars().all()
-        for a in assignments:
-            db.delete(a)
-        db.delete(course)
-        db.commit()
-
     # ---------------- Examination Session Operations ----------------
     @staticmethod
     def create_session(db: Session, data: ExaminationSessionCreate) -> ExaminationSession:
@@ -250,24 +211,3 @@ class AcademicService:
         db.commit()
         db.refresh(session)
         return session
-
-    @staticmethod
-    def update_session(db: Session, session_id: uuid.UUID, data: ExaminationSessionUpdate) -> ExaminationSession:
-        session = AcademicService.get_session(db, session_id)
-        if data.name is not None:
-            session.name = data.name.strip()
-        if data.academic_year is not None:
-            session.academic_year = data.academic_year.strip()
-        if data.semester_number is not None:
-            session.semester_number = data.semester_number
-        if data.status is not None:
-            session.status = data.status
-        db.commit()
-        db.refresh(session)
-        return session
-
-    @staticmethod
-    def delete_session(db: Session, session_id: uuid.UUID) -> None:
-        session = AcademicService.get_session(db, session_id)
-        db.delete(session)
-        db.commit()

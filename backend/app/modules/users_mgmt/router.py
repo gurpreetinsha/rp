@@ -12,8 +12,8 @@ from app.modules.auth.dependencies import (
 )
 from app.modules.users_mgmt.models import TeacherCourseAssignment
 from app.modules.users_mgmt.schemas import (
-    TeacherCreate, TeacherUpdate, TeacherOut,
-    StudentCreate, StudentUpdate, StudentOut,
+    TeacherCreate, TeacherOut,
+    StudentCreate, StudentOut,
     EnrollmentCreate, EnrollmentOut,
     AssignmentCreate, AssignmentOut,
 )
@@ -66,28 +66,6 @@ def get_teacher_by_id(
     return UsersManagementService.get_teacher(db, teacher_id)
 
 
-@router.patch("/teachers/{teacher_id}", response_model=TeacherOut)
-def update_teacher(
-    teacher_id: uuid.UUID,
-    data: TeacherUpdate,
-    current_admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin-only: update a faculty member's profile or account details."""
-    return UsersManagementService.update_teacher(db, teacher_id, data)
-
-
-@router.delete("/teachers/{teacher_id}")
-def delete_teacher(
-    teacher_id: uuid.UUID,
-    current_admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin-only: delete a teacher account and profile."""
-    UsersManagementService.delete_teacher(db, teacher_id)
-    return {"success": True, "message": "Teacher deleted successfully"}
-
-
 # ---------------- Student Endpoints ----------------
 @router.post("/students", response_model=StudentOut, status_code=status.HTTP_201_CREATED)
 def create_student(
@@ -132,28 +110,6 @@ def get_student_by_id(
     return UsersManagementService.get_student(db, student_id)
 
 
-@router.patch("/students/{student_id}", response_model=StudentOut)
-def update_student(
-    student_id: uuid.UUID,
-    data: StudentUpdate,
-    current_admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin-only: update a student's profile or account details."""
-    return UsersManagementService.update_student(db, student_id, data)
-
-
-@router.delete("/students/{student_id}")
-def delete_student(
-    student_id: uuid.UUID,
-    current_admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin-only: delete a student account and profile."""
-    UsersManagementService.delete_student(db, student_id)
-    return {"success": True, "message": "Student deleted successfully"}
-
-
 # ---------------- Enrollment Endpoints ----------------
 @router.post("/enrollments", response_model=EnrollmentOut, status_code=status.HTTP_201_CREATED)
 def enroll_student(
@@ -192,17 +148,6 @@ def list_enrollments(
     return UsersManagementService.list_enrollments(db, session_id=session_id, course_id=course_id)
 
 
-@router.delete("/enrollments/{enrollment_id}")
-def delete_enrollment(
-    enrollment_id: uuid.UUID,
-    current_admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin-only: remove a student enrollment."""
-    UsersManagementService.delete_enrollment(db, enrollment_id)
-    return {"success": True, "message": "Enrollment removed successfully"}
-
-
 # ---------------- Assignment Endpoints ----------------
 @router.post("/assignments", response_model=AssignmentOut, status_code=status.HTTP_201_CREATED)
 def assign_teacher_to_course(
@@ -223,14 +168,3 @@ def list_all_assignments(
 ):
     """Admin-only: list course-to-teacher assignments across the institution."""
     return UsersManagementService.list_assignments(db, session_id=session_id, course_id=course_id)
-
-
-@router.delete("/assignments/{assignment_id}")
-def delete_assignment(
-    assignment_id: uuid.UUID,
-    current_admin: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin-only: remove a teacher course assignment."""
-    UsersManagementService.delete_assignment(db, assignment_id)
-    return {"success": True, "message": "Assignment removed successfully"}

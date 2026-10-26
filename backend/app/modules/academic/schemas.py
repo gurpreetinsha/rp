@@ -103,13 +103,6 @@ class ExaminationSessionStatusUpdate(BaseModel):
     status: SessionStatus
 
 
-class ExaminationSessionUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=3, max_length=150)
-    academic_year: Optional[str] = Field(None, min_length=4, max_length=20)
-    semester_number: Optional[int] = Field(None, ge=1, le=12)
-    status: Optional[SessionStatus] = None
-
-
 class ExaminationSessionOut(ExaminationSessionBase):
     id: uuid.UUID
     status: SessionStatus

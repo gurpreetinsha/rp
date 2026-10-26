@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import { DatabaseStudio } from './DatabaseStudio';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'sessions' | 'imports' | 'calculate_publish' | 'amendments' | 'audit' | 'directory' | 'database'>('calculate_publish');
+  const [activeTab, setActiveTab] = useState<'sessions' | 'imports' | 'calculate_publish' | 'amendments' | 'audit' | 'directory'>('calculate_publish');
   const [directorySubTab, setDirectorySubTab] = useState<'teachers' | 'students' | 'assignments' | 'enrollments' | 'academic_units'>('teachers');
 
   // Core Data
@@ -97,51 +96,6 @@ export const AdminDashboard: React.FC = () => {
   // Withhold modal
   const [withholdTarget, setWithholdTarget] = useState<any | null>(null);
   const [withholdReason, setWithholdReason] = useState<string>('');
-
-  // Editing Entities State
-  const [editingTeacher, setEditingTeacher] = useState<any | null>(null);
-  const [editTeacherName, setEditTeacherName] = useState('');
-  const [editTeacherEmail, setEditTeacherEmail] = useState('');
-  const [editTeacherEmpId, setEditTeacherEmpId] = useState('');
-  const [editTeacherDeptId, setEditTeacherDeptId] = useState('');
-  const [editTeacherDesignation, setEditTeacherDesignation] = useState('');
-  const [editTeacherActive, setEditTeacherActive] = useState(true);
-  const [editTeacherPassword, setEditTeacherPassword] = useState('');
-
-  const [editingStudent, setEditingStudent] = useState<any | null>(null);
-  const [editStudentName, setEditStudentName] = useState('');
-  const [editStudentEmail, setEditStudentEmail] = useState('');
-  const [editStudentRegNo, setEditStudentRegNo] = useState('');
-  const [editStudentRollNo, setEditStudentRollNo] = useState('');
-  const [editStudentProgId, setEditStudentProgId] = useState('');
-  const [editStudentSem, setEditStudentSem] = useState(1);
-  const [editStudentActive, setEditStudentActive] = useState(true);
-  const [editStudentPassword, setEditStudentPassword] = useState('');
-
-  const [editingDept, setEditingDept] = useState<any | null>(null);
-  const [editDeptCode, setEditDeptCode] = useState('');
-  const [editDeptName, setEditDeptName] = useState('');
-  const [editDeptActive, setEditDeptActive] = useState(true);
-
-  const [editingProg, setEditingProg] = useState<any | null>(null);
-  const [editProgDeptId, setEditProgDeptId] = useState('');
-  const [editProgCode, setEditProgCode] = useState('');
-  const [editProgName, setEditProgName] = useState('');
-  const [editProgSemesters, setEditProgSemesters] = useState(8);
-  const [editProgActive, setEditProgActive] = useState(true);
-
-  const [editingCourse, setEditingCourse] = useState<any | null>(null);
-  const [editCourseCode, setEditCourseCode] = useState('');
-  const [editCourseName, setEditCourseName] = useState('');
-  const [editCourseCredits, setEditCourseCredits] = useState(3.0);
-  const [editCoursePassPct, setEditCoursePassPct] = useState(40.0);
-  const [editCourseActive, setEditCourseActive] = useState(true);
-
-  const [editingSession, setEditingSession] = useState<any | null>(null);
-  const [editSessionName, setEditSessionName] = useState('');
-  const [editSessionYear, setEditSessionYear] = useState('');
-  const [editSessionSem, setEditSessionSem] = useState(1);
-  const [editSessionStatus, setEditSessionStatus] = useState('');
 
   const showMessage = useCallback((text: string, type: 'success' | 'danger') => {
     setActionMsg({ text, type });
@@ -594,310 +548,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 10. Direct Entity Edit & Deletion Handlers
-  const openEditTeacher = (t: any) => {
-    setEditingTeacher(t);
-    setEditTeacherName(t.full_name || '');
-    setEditTeacherEmail(t.email || '');
-    setEditTeacherEmpId(t.employee_id || '');
-    setEditTeacherDeptId(t.department_id || '');
-    setEditTeacherDesignation(t.designation || 'Assistant Professor');
-    setEditTeacherActive(t.is_active !== false);
-    setEditTeacherPassword('');
-  };
-
-  const handleUpdateTeacher = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTeacher) return;
-    setLoading(true);
-    try {
-      await api.updateTeacher(editingTeacher.id, {
-        full_name: editTeacherName.trim(),
-        email: editTeacherEmail.trim().toLowerCase(),
-        employee_id: editTeacherEmpId.trim().toUpperCase(),
-        department_id: editTeacherDeptId,
-        designation: editTeacherDesignation.trim(),
-        is_active: editTeacherActive,
-        ...(editTeacherPassword ? { password: editTeacherPassword } : {}),
-      });
-      showMessage(`Faculty member "${editTeacherName}" updated successfully!`, 'success');
-      setEditingTeacher(null);
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to update faculty member', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteTeacher = async (t: any) => {
-    if (!confirm(`Are you sure you want to delete faculty member "${t.full_name}" (${t.employee_id})? This will also remove login credentials and course assignments.`)) return;
-    setLoading(true);
-    try {
-      await api.deleteTeacher(t.id);
-      showMessage(`Faculty member "${t.full_name}" deleted successfully!`, 'success');
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to delete faculty member', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openEditStudent = (s: any) => {
-    setEditingStudent(s);
-    setEditStudentName(s.full_name || '');
-    setEditStudentEmail(s.email || '');
-    setEditStudentRegNo(s.registration_number || '');
-    setEditStudentRollNo(s.roll_number || '');
-    setEditStudentProgId(s.program_id || '');
-    setEditStudentSem(s.current_semester || 1);
-    setEditStudentActive(s.is_active !== false);
-    setEditStudentPassword('');
-  };
-
-  const handleUpdateStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingStudent) return;
-    setLoading(true);
-    try {
-      await api.updateStudent(editingStudent.id, {
-        full_name: editStudentName.trim(),
-        email: editStudentEmail.trim().toLowerCase(),
-        registration_number: editStudentRegNo.trim().toUpperCase(),
-        roll_number: editStudentRollNo.trim() || undefined,
-        program_id: editStudentProgId,
-        current_semester: editStudentSem,
-        is_active: editStudentActive,
-        ...(editStudentPassword ? { password: editStudentPassword } : {}),
-      });
-      showMessage(`Student "${editStudentName}" updated successfully!`, 'success');
-      setEditingStudent(null);
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to update student', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteStudent = async (s: any) => {
-    if (!confirm(`Are you sure you want to delete student "${s.full_name}" (${s.registration_number})? This will also remove course enrollments and user credentials.`)) return;
-    setLoading(true);
-    try {
-      await api.deleteStudent(s.id);
-      showMessage(`Student "${s.full_name}" deleted successfully!`, 'success');
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to delete student', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteAssignment = async (a: any) => {
-    if (!confirm(`Are you sure you want to revoke assignment of ${a.teacher_name} for course ${a.course_code}?`)) return;
-    setLoading(true);
-    try {
-      await api.deleteAssignment(a.id);
-      showMessage(`Course allocation revoked successfully!`, 'success');
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to revoke course allocation', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteEnrollment = async (e: any) => {
-    if (!confirm(`Are you sure you want to remove enrollment for student ${e.student_name} from ${e.course_code}?`)) return;
-    setLoading(true);
-    try {
-      await api.deleteEnrollment(e.id);
-      showMessage(`Course enrollment removed successfully!`, 'success');
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to remove course enrollment', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openEditDept = (d: any) => {
-    setEditingDept(d);
-    setEditDeptCode(d.code || '');
-    setEditDeptName(d.name || '');
-    setEditDeptActive(d.is_active !== false);
-  };
-
-  const handleUpdateDepartment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingDept) return;
-    setLoading(true);
-    try {
-      await api.updateDepartment(editingDept.id, {
-        code: editDeptCode.trim().toUpperCase(),
-        name: editDeptName.trim(),
-        is_active: editDeptActive,
-      });
-      showMessage(`Department updated successfully!`, 'success');
-      setEditingDept(null);
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to update department', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteDepartment = async (d: any) => {
-    if (!confirm(`Are you sure you want to delete department "${d.name}" (${d.code})?`)) return;
-    setLoading(true);
-    try {
-      await api.deleteDepartment(d.id);
-      showMessage(`Department deleted successfully!`, 'success');
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to delete department', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openEditProg = (p: any) => {
-    setEditingProg(p);
-    setEditProgDeptId(p.department_id || '');
-    setEditProgCode(p.code || '');
-    setEditProgName(p.name || '');
-    setEditProgSemesters(p.total_semesters || 8);
-    setEditProgActive(p.is_active !== false);
-  };
-
-  const handleUpdateProgram = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProg) return;
-    setLoading(true);
-    try {
-      await api.updateProgram(editingProg.id, {
-        department_id: editProgDeptId,
-        code: editProgCode.trim().toUpperCase(),
-        name: editProgName.trim(),
-        total_semesters: editProgSemesters,
-        is_active: editProgActive,
-      });
-      showMessage(`Degree program updated successfully!`, 'success');
-      setEditingProg(null);
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to update program', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteProgram = async (p: any) => {
-    if (!confirm(`Are you sure you want to delete program "${p.name}" (${p.code})?`)) return;
-    setLoading(true);
-    try {
-      await api.deleteProgram(p.id);
-      showMessage(`Degree program deleted successfully!`, 'success');
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to delete program', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openEditCourse = (c: any) => {
-    setEditingCourse(c);
-    setEditCourseCode(c.code || '');
-    setEditCourseName(c.name || '');
-    setEditCourseCredits(c.credits ?? 3.0);
-    setEditCoursePassPct(c.pass_percentage ?? 40.0);
-    setEditCourseActive(c.is_active !== false);
-  };
-
-  const handleUpdateCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCourse) return;
-    setLoading(true);
-    try {
-      await api.updateCourse(editingCourse.id, {
-        code: editCourseCode.trim().toUpperCase(),
-        name: editCourseName.trim(),
-        credits: editCourseCredits,
-        pass_percentage: editCoursePassPct,
-        is_active: editCourseActive,
-      });
-      showMessage(`Course updated successfully!`, 'success');
-      setEditingCourse(null);
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to update course', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteCourse = async (c: any) => {
-    if (!confirm(`Are you sure you want to delete course "${c.name}" (${c.code})?`)) return;
-    setLoading(true);
-    try {
-      await api.deleteCourse(c.id);
-      showMessage(`Course deleted successfully!`, 'success');
-      loadSessionData(selectedSessionId);
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to delete course', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openEditSession = (s: any) => {
-    setEditingSession(s);
-    setEditSessionName(s.name || '');
-    setEditSessionYear(s.academic_year || '');
-    setEditSessionSem(s.semester_number || 1);
-    setEditSessionStatus(s.status || 'DRAFT');
-  };
-
-  const handleUpdateSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingSession) return;
-    setLoading(true);
-    try {
-      await api.updateSession(editingSession.id, {
-        name: editSessionName.trim(),
-        academic_year: editSessionYear.trim(),
-        semester_number: editSessionSem,
-        status: editSessionStatus,
-      });
-      showMessage(`Examination session updated successfully!`, 'success');
-      setEditingSession(null);
-      loadSessions();
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to update session', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteSession = async (s: any) => {
-    if (!confirm(`Are you sure you want to delete examination session "${s.name}"? This will remove all associated session records.`)) return;
-    setLoading(true);
-    try {
-      await api.deleteSession(s.id);
-      showMessage(`Examination session deleted successfully!`, 'success');
-      setSelectedSessionId('');
-      loadSessions();
-    } catch (err: any) {
-      showMessage(err.message || 'Failed to delete session', 'danger');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const currentSessionObj = sessions.find((s) => s.id === selectedSessionId);
 
   return (
@@ -978,12 +628,6 @@ export const AdminDashboard: React.FC = () => {
           onClick={() => setActiveTab('audit')}
         >
           🔒 Compliance Audit Trail
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'database' ? 'active' : ''}`}
-          onClick={() => setActiveTab('database')}
-        >
-          🗄️ Database Studio
         </button>
       </div>
 
@@ -1382,63 +1026,6 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {/* All Examination Sessions Table */}
-          <div className="glass-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1.15rem' }}>All Examination Sessions ({sessions.length})</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  Manage, modify details, or remove examination sessions across terms.
-                </p>
-              </div>
-            </div>
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Session Name</th>
-                    <th>Academic Year</th>
-                    <th>Semester</th>
-                    <th>Lifecycle Status</th>
-                    <th style={{ width: '140px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessions.map((s) => (
-                    <tr key={s.id}>
-                      <td style={{ fontWeight: 600 }}>{s.name}</td>
-                      <td><code>{s.academic_year}</code></td>
-                      <td>Semester {s.semester_number}</td>
-                      <td>
-                        <span className="badge badge-info">{s.status}</span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.35rem' }}>
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => openEditSession(s)}
-                            title="Edit Session Details"
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => handleDeleteSession(s)}
-                            title="Delete Session"
-                          >
-                            🗑️ Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1540,7 +1127,6 @@ export const AdminDashboard: React.FC = () => {
                       <th>Designation</th>
                       <th>Department</th>
                       <th>Status</th>
-                      <th style={{ width: '140px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1558,32 +1144,12 @@ export const AdminDashboard: React.FC = () => {
                               {t.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.35rem' }}>
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                onClick={() => openEditTeacher(t)}
-                                title="Edit Faculty Member"
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                className="btn btn-danger btn-sm"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                onClick={() => handleDeleteTeacher(t)}
-                                title="Delete Faculty Member"
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
-                          </td>
                         </tr>
                       );
                     })}
                     {teachers.length === 0 && (
                       <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                           No faculty members registered yet. Click "Register Faculty Member" to add one.
                         </td>
                       </tr>
@@ -1619,7 +1185,6 @@ export const AdminDashboard: React.FC = () => {
                       <th>Program</th>
                       <th>Semester</th>
                       <th>Status</th>
-                      <th style={{ width: '140px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1638,32 +1203,12 @@ export const AdminDashboard: React.FC = () => {
                               {s.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.35rem' }}>
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                onClick={() => openEditStudent(s)}
-                                title="Edit Student"
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                className="btn btn-danger btn-sm"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                onClick={() => handleDeleteStudent(s)}
-                                title="Delete Student"
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
-                          </td>
                         </tr>
                       );
                     })}
                     {students.length === 0 && (
                       <tr>
-                        <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                           No students registered yet. Click "Register New Student" to add students.
                         </td>
                       </tr>
@@ -1697,7 +1242,6 @@ export const AdminDashboard: React.FC = () => {
                       <th>Course</th>
                       <th>Examination Session</th>
                       <th>Status</th>
-                      <th style={{ width: '100px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1712,21 +1256,11 @@ export const AdminDashboard: React.FC = () => {
                             {a.is_active ? 'Active' : 'Revoked'}
                           </span>
                         </td>
-                        <td>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => handleDeleteAssignment(a)}
-                            title="Revoke Course Allocation"
-                          >
-                            🗑️ Revoke
-                          </button>
-                        </td>
                       </tr>
                     ))}
                     {assignments.length === 0 && (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                           No faculty course allocations found for this session. Click "Assign Faculty to Course" to create one.
                         </td>
                       </tr>
@@ -1760,7 +1294,6 @@ export const AdminDashboard: React.FC = () => {
                       <th>Course</th>
                       <th>Session</th>
                       <th>Status</th>
-                      <th style={{ width: '100px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1775,21 +1308,11 @@ export const AdminDashboard: React.FC = () => {
                             {e.is_active ? 'Enrolled' : 'Dropped'}
                           </span>
                         </td>
-                        <td>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                            onClick={() => handleDeleteEnrollment(e)}
-                            title="Remove Enrollment"
-                          >
-                            🗑️ Remove
-                          </button>
-                        </td>
                       </tr>
                     ))}
                     {enrollments.length === 0 && (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                           No course enrollments found for this session. Click "Enroll Student in Course" to enroll students.
                         </td>
                       </tr>
@@ -1802,193 +1325,60 @@ export const AdminDashboard: React.FC = () => {
 
           {/* SubTab 5: ACADEMIC UNITS */}
           {directorySubTab === 'academic_units' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
-                <div className="glass-panel">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1.15rem' }}>Academic Departments ({departments.length})</h3>
-                    <button className="btn btn-primary btn-sm" onClick={() => setShowDeptModal(true)}>
-                      ➕ Add Department
-                    </button>
-                  </div>
-                  <div className="table-responsive">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Code</th>
-                          <th>Department Name</th>
-                          <th>Status</th>
-                          <th style={{ width: '110px' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {departments.map((d) => (
-                          <tr key={d.id}>
-                            <td><code>{d.code}</code></td>
-                            <td>{d.name}</td>
-                            <td>
-                              <span className={`badge ${d.is_active !== false ? 'badge-success' : 'badge-danger'}`}>
-                                {d.is_active !== false ? 'Active' : 'Inactive'}
-                              </span>
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem' }}
-                                  onClick={() => openEditDept(d)}
-                                  title="Edit Department"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  className="btn btn-danger btn-sm"
-                                  style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem' }}
-                                  onClick={() => handleDeleteDepartment(d)}
-                                  title="Delete Department"
-                                >
-                                  🗑️
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {departments.length === 0 && (
-                          <tr>
-                            <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>
-                              No departments found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="glass-panel">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1.15rem' }}>Degree Programs ({programs.length})</h3>
-                    <button className="btn btn-primary btn-sm" onClick={() => setShowProgModal(true)}>
-                      ➕ Add Program
-                    </button>
-                  </div>
-                  <div className="table-responsive">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Code</th>
-                          <th>Program Name</th>
-                          <th>Semesters</th>
-                          <th style={{ width: '110px' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {programs.map((p) => (
-                          <tr key={p.id}>
-                            <td><code>{p.code}</code></td>
-                            <td>{p.name}</td>
-                            <td>{p.total_semesters} Sem</td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem' }}
-                                  onClick={() => openEditProg(p)}
-                                  title="Edit Program"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  className="btn btn-danger btn-sm"
-                                  style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem' }}
-                                  onClick={() => handleDeleteProgram(p)}
-                                  title="Delete Program"
-                                >
-                                  🗑️
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {programs.length === 0 && (
-                          <tr>
-                            <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>
-                              No programs found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              {/* Master Courses Catalog Panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
               <div className="glass-panel">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.15rem' }}>Active Course Offerings ({courses.length})</h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      Master course catalog defining credits and minimum pass percentages across academic departments.
-                    </p>
-                  </div>
-                  <button className="btn btn-primary btn-sm" onClick={() => setShowCourseModal(true)}>
-                    ➕ Register New Course
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1.15rem' }}>Academic Departments</h3>
+                  <button className="btn btn-primary btn-sm" onClick={() => setShowDeptModal(true)}>
+                    ➕ Add Department
                   </button>
                 </div>
                 <div className="table-responsive">
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Course Code</th>
-                        <th>Course Name</th>
-                        <th>Credits</th>
-                        <th>Pass Mark %</th>
+                        <th>Code</th>
+                        <th>Department Name</th>
                         <th>Status</th>
-                        <th style={{ width: '140px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {courses.map((c) => (
-                        <tr key={c.id}>
-                          <td><code>{c.code}</code></td>
-                          <td style={{ fontWeight: 600 }}>{c.name}</td>
-                          <td>{c.credits} Credits</td>
-                          <td>{c.pass_percentage}%</td>
-                          <td>
-                            <span className={`badge ${c.is_active !== false ? 'badge-success' : 'badge-danger'}`}>
-                              {c.is_active !== false ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.35rem' }}>
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                onClick={() => openEditCourse(c)}
-                                title="Edit Course"
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                className="btn btn-danger btn-sm"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                onClick={() => handleDeleteCourse(c)}
-                                title="Delete Course"
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
-                          </td>
+                      {departments.map((d) => (
+                        <tr key={d.id}>
+                          <td><code>{d.code}</code></td>
+                          <td>{d.name}</td>
+                          <td><span className="badge badge-success">Active</span></td>
                         </tr>
                       ))}
-                      {courses.length === 0 && (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                            No courses in master catalog. Click "Register New Course" to add one.
-                          </td>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="glass-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1.15rem' }}>Degree Programs</h3>
+                  <button className="btn btn-primary btn-sm" onClick={() => setShowProgModal(true)}>
+                    ➕ Add Program
+                  </button>
+                </div>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Program Name</th>
+                        <th>Semesters</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {programs.map((p) => (
+                        <tr key={p.id}>
+                          <td><code>{p.code}</code></td>
+                          <td>{p.name}</td>
+                          <td>{p.total_semesters} Semesters</td>
                         </tr>
-                      )}
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1996,11 +1386,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
         </div>
-      )}
-
-      {/* TAB: DATABASE STUDIO */}
-      {activeTab === 'database' && (
-        <DatabaseStudio onNotify={showMessage} />
       )}
 
       {/* MODAL: REJECT BATCH */}
@@ -2708,494 +2093,6 @@ export const AdminDashboard: React.FC = () => {
                 <button type="button" className="btn btn-secondary" onClick={() => setShowProgModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={loading}>
                   {loading ? 'Creating...' : 'Create Program'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT TEACHER */}
-      {editingTeacher && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>✏️ Edit Faculty Member: {editingTeacher.full_name}</h3>
-              <button className="btn btn-secondary btn-sm" onClick={() => setEditingTeacher(null)}>✕</button>
-            </div>
-            <form onSubmit={handleUpdateTeacher}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editTeacherName}
-                    onChange={(e) => setEditTeacherName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={editTeacherEmail}
-                    onChange={(e) => setEditTeacherEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Employee ID</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editTeacherEmpId}
-                    onChange={(e) => setEditTeacherEmpId(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <select
-                    className="form-select"
-                    value={editTeacherDeptId}
-                    onChange={(e) => setEditTeacherDeptId(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Select Department --</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.code} - {d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Designation</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editTeacherDesignation}
-                    onChange={(e) => setEditTeacherDesignation(e.target.value)}
-                    placeholder="e.g. Associate Professor"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Reset Password (leave empty to keep unchanged)</label>
-                  <input
-                    type="password"
-                    className="form-input"
-                    value={editTeacherPassword}
-                    onChange={(e) => setEditTeacherPassword(e.target.value)}
-                    placeholder="Enter new password to reset"
-                  />
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    id="editTeacherActive"
-                    checked={editTeacherActive}
-                    onChange={(e) => setEditTeacherActive(e.target.checked)}
-                  />
-                  <label htmlFor="editTeacherActive" style={{ cursor: 'pointer', margin: 0 }}>
-                    Active (Authorized to login & manage marks)
-                  </label>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingTeacher(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT STUDENT */}
-      {editingStudent && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>✏️ Edit Student: {editingStudent.full_name}</h3>
-              <button className="btn btn-secondary btn-sm" onClick={() => setEditingStudent(null)}>✕</button>
-            </div>
-            <form onSubmit={handleUpdateStudent}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editStudentName}
-                    onChange={(e) => setEditStudentName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={editStudentEmail}
-                    onChange={(e) => setEditStudentEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Registration Number</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editStudentRegNo}
-                    onChange={(e) => setEditStudentRegNo(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Roll Number (Optional)</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editStudentRollNo}
-                    onChange={(e) => setEditStudentRollNo(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Academic Program</label>
-                  <select
-                    className="form-select"
-                    value={editStudentProgId}
-                    onChange={(e) => setEditStudentProgId(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Select Degree Program --</option>
-                    {programs.map((p) => (
-                      <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Current Semester</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    className="form-input"
-                    value={editStudentSem}
-                    onChange={(e) => setEditStudentSem(parseInt(e.target.value) || 1)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Reset Password (leave empty to keep unchanged)</label>
-                  <input
-                    type="password"
-                    className="form-input"
-                    value={editStudentPassword}
-                    onChange={(e) => setEditStudentPassword(e.target.value)}
-                    placeholder="Enter new password to reset"
-                  />
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    id="editStudentActive"
-                    checked={editStudentActive}
-                    onChange={(e) => setEditStudentActive(e.target.checked)}
-                  />
-                  <label htmlFor="editStudentActive" style={{ cursor: 'pointer', margin: 0 }}>
-                    Active (Enrolled student)
-                  </label>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingStudent(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT DEPARTMENT */}
-      {editingDept && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>✏️ Edit Department: {editingDept.code}</h3>
-              <button className="btn btn-secondary btn-sm" onClick={() => setEditingDept(null)}>✕</button>
-            </div>
-            <form onSubmit={handleUpdateDepartment}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Department Code</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editDeptCode}
-                    onChange={(e) => setEditDeptCode(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Department Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editDeptName}
-                    onChange={(e) => setEditDeptName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    id="editDeptActive"
-                    checked={editDeptActive}
-                    onChange={(e) => setEditDeptActive(e.target.checked)}
-                  />
-                  <label htmlFor="editDeptActive" style={{ cursor: 'pointer', margin: 0 }}>
-                    Active Department
-                  </label>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingDept(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT PROGRAM */}
-      {editingProg && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>✏️ Edit Degree Program: {editingProg.code}</h3>
-              <button className="btn btn-secondary btn-sm" onClick={() => setEditingProg(null)}>✕</button>
-            </div>
-            <form onSubmit={handleUpdateProgram}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Parent Department</label>
-                  <select
-                    className="form-select"
-                    value={editProgDeptId}
-                    onChange={(e) => setEditProgDeptId(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Select Department --</option>
-                    {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.code} - {d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Program Code</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editProgCode}
-                    onChange={(e) => setEditProgCode(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Program Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editProgName}
-                    onChange={(e) => setEditProgName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Total Semesters</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    className="form-input"
-                    value={editProgSemesters}
-                    onChange={(e) => setEditProgSemesters(parseInt(e.target.value) || 8)}
-                    required
-                  />
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    id="editProgActive"
-                    checked={editProgActive}
-                    onChange={(e) => setEditProgActive(e.target.checked)}
-                  />
-                  <label htmlFor="editProgActive" style={{ cursor: 'pointer', margin: 0 }}>
-                    Active Degree Program
-                  </label>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingProg(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT COURSE */}
-      {editingCourse && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>✏️ Edit Course: {editingCourse.code}</h3>
-              <button className="btn btn-secondary btn-sm" onClick={() => setEditingCourse(null)}>✕</button>
-            </div>
-            <form onSubmit={handleUpdateCourse}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Course Code</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editCourseCode}
-                    onChange={(e) => setEditCourseCode(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Course Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editCourseName}
-                    onChange={(e) => setEditCourseName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Academic Credits</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="20"
-                    className="form-input"
-                    value={editCourseCredits}
-                    onChange={(e) => setEditCourseCredits(parseFloat(e.target.value) || 0)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Minimum Pass Percentage (%)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="100"
-                    className="form-input"
-                    value={editCoursePassPct}
-                    onChange={(e) => setEditCoursePassPct(parseFloat(e.target.value) || 40)}
-                    required
-                  />
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    id="editCourseActive"
-                    checked={editCourseActive}
-                    onChange={(e) => setEditCourseActive(e.target.checked)}
-                  />
-                  <label htmlFor="editCourseActive" style={{ cursor: 'pointer', margin: 0 }}>
-                    Active Course Offering
-                  </label>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingCourse(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT EXAMINATION SESSION */}
-      {editingSession && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>✏️ Edit Examination Session: {editingSession.name}</h3>
-              <button className="btn btn-secondary btn-sm" onClick={() => setEditingSession(null)}>✕</button>
-            </div>
-            <form onSubmit={handleUpdateSession}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Session Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editSessionName}
-                    onChange={(e) => setEditSessionName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Academic Year</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editSessionYear}
-                    onChange={(e) => setEditSessionYear(e.target.value)}
-                    placeholder="e.g. 2025-2026"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Semester Number</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    className="form-input"
-                    value={editSessionSem}
-                    onChange={(e) => setEditSessionSem(parseInt(e.target.value) || 1)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Lifecycle Status</label>
-                  <select
-                    className="form-select"
-                    value={editSessionStatus}
-                    onChange={(e) => setEditSessionStatus(e.target.value)}
-                    required
-                  >
-                    <option value="DRAFT">DRAFT</option>
-                    <option value="MARKS_ENTRY_OPEN">MARKS_ENTRY_OPEN</option>
-                    <option value="MARKS_LOCKED">MARKS_LOCKED</option>
-                    <option value="CALCULATED">CALCULATED</option>
-                    <option value="PUBLISHED">PUBLISHED</option>
-                    <option value="ARCHIVED">ARCHIVED</option>
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingSession(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
