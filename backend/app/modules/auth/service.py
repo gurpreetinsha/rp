@@ -1,5 +1,8 @@
 import uuid
-from typing import Optional
+import time
+import threading
+from collections import defaultdict
+from typing import Optional, Dict, List
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -7,7 +10,13 @@ from app.modules.auth.models import User
 from app.modules.auth.schemas import UserCreate, BootstrapAdminRequest
 from app.core.enums import UserRole
 from app.core.security import hash_password, verify_password
-from app.core.exceptions import UnauthorizedException, ConflictException, ForbiddenException
+from app.core.exceptions import (
+    UnauthorizedException, ConflictException, ForbiddenException, RateLimitedException
+)
+
+_bootstrap_lock = threading.Lock()
+_login_failures: Dict[str, List[float]] = defaultdict(list)
+_rate_limit_lock = threading.Lock()
 
 
 class AuthService:
@@ -23,15 +32,28 @@ class AuthService:
         return db.execute(select(User).where(User.email == normalized)).scalar_one_or_none()
 
     @staticmethod
-    def authenticate_user(db: Session, email: str, password: str) -> User:
-        """Authenticate user by email and password; verify account is active."""
+    def authenticate_user(db: Session, email: str, password: str, client_ip: Optional[str] = None) -> User:
+        """Authenticate user by email and password; verify account is active with rate limiting."""
+        key = f"{client_ip or 'unknown'}:{email.strip().lower()}"
+        now = time.time()
+
+        with _rate_limit_lock:
+            _login_failures[key] = [t for t in _login_failures[key] if now - t < 60]
+            if len(_login_failures[key]) >= 5:
+                raise RateLimitedException("Too many failed login attempts. Please wait 60 seconds before trying again.")
+
         user = AuthService.get_user_by_email(db, email)
         if not user or not verify_password(password, user.hashed_password):
+            with _rate_limit_lock:
+                _login_failures[key].append(time.time())
             # Generic response to prevent account enumeration
             raise UnauthorizedException("Incorrect email or password")
 
         if not user.is_active:
             raise UnauthorizedException("User account is inactive. Please contact the administrator.")
+
+        with _rate_limit_lock:
+            _login_failures.pop(key, None)
 
         return user
 
@@ -57,26 +79,28 @@ class AuthService:
     @staticmethod
     def bootstrap_admin(db: Session, data: BootstrapAdminRequest) -> User:
         """Bootstrap the initial administrator if no administrator exists in the system."""
-        existing_admin = db.execute(
-            select(User).where(User.role == UserRole.ADMIN)
-        ).scalar_one_or_none()
+        with _bootstrap_lock:
+            existing_admin = db.execute(
+                select(User).where(User.role == UserRole.ADMIN)
+            ).scalar_one_or_none()
 
-        if existing_admin:
-            raise ForbiddenException("Administrator account already exists. Use standard admin login.")
+            if existing_admin:
+                raise ForbiddenException("Administrator account already exists. Use standard admin login.")
 
-        # Check if email is in use
-        existing_email = AuthService.get_user_by_email(db, data.email)
-        if existing_email:
-            raise ConflictException(f"Account with email '{data.email}' already exists")
+            # Check if email is in use
+            existing_email = AuthService.get_user_by_email(db, data.email)
+            if existing_email:
+                raise ConflictException(f"Account with email '{data.email}' already exists")
 
-        admin_user = User(
-            email=data.email.strip().lower(),
-            hashed_password=hash_password(data.password),
-            full_name=data.full_name.strip(),
-            role=UserRole.ADMIN,
-            is_active=True,
-        )
-        db.add(admin_user)
-        db.commit()
-        db.refresh(admin_user)
-        return admin_user
+            admin_user = User(
+                email=data.email.strip().lower(),
+                hashed_password=hash_password(data.password),
+                full_name=data.full_name.strip(),
+                role=UserRole.ADMIN,
+                is_active=True,
+            )
+            db.add(admin_user)
+            db.commit()
+            db.refresh(admin_user)
+            return admin_user
+

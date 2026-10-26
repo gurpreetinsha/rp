@@ -231,7 +231,10 @@ class ImportsService:
         - Updates batch status to IMPORTED.
         - Creates immutable audit record.
         """
-        batch = db.get(MarkImportBatch, batch_id)
+        query = select(MarkImportBatch).where(MarkImportBatch.id == batch_id)
+        if db.bind and db.bind.dialect.name == "postgresql":
+            query = query.with_for_update()
+        batch = db.execute(query).scalar_one_or_none()
         if not batch:
             raise NotFoundException(f"Import batch with ID {batch_id} not found")
 
@@ -261,10 +264,13 @@ class ImportsService:
             select(MarkImportRow).where(MarkImportRow.batch_id == batch.id, MarkImportRow.is_valid == True)
         ).scalars().all()
 
+        needed_regs = [r.raw_registration_number.strip().upper() for r in staged_rows if r.raw_registration_number]
         students_by_reg = {
             s.registration_number: s
-            for s in db.execute(select(Student)).scalars().all()
-        }
+            for s in db.execute(
+                select(Student).where(Student.registration_number.in_(needed_regs))
+            ).scalars().all()
+        } if needed_regs else {}
 
         for row in staged_rows:
             student = students_by_reg.get(row.raw_registration_number.strip().upper())

@@ -2,21 +2,89 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'sessions' | 'imports' | 'calculate_publish' | 'amendments' | 'audit'>('calculate_publish');
+  const [activeTab, setActiveTab] = useState<'sessions' | 'imports' | 'calculate_publish' | 'amendments' | 'audit' | 'directory'>('calculate_publish');
+  const [directorySubTab, setDirectorySubTab] = useState<'teachers' | 'students' | 'assignments' | 'enrollments' | 'academic_units'>('teachers');
 
   // Core Data
   const [sessions, setSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+
+  // Directory Data
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+
+  // Directory Modals & Forms
+  const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [teacherName, setTeacherName] = useState('');
+  const [teacherEmail, setTeacherEmail] = useState('');
+  const [teacherPassword, setTeacherPassword] = useState('');
+  const [teacherEmpId, setTeacherEmpId] = useState('');
+  const [teacherDeptId, setTeacherDeptId] = useState('');
+  const [teacherDesignation, setTeacherDesignation] = useState('Assistant Professor');
+
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [studentName, setStudentName] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
+  const [studentPassword, setStudentPassword] = useState('');
+  const [studentRegNo, setStudentRegNo] = useState('');
+  const [studentRollNo, setStudentRollNo] = useState('');
+  const [studentProgId, setStudentProgId] = useState('');
+  const [studentSem, setStudentSem] = useState(1);
+
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignTeacherId, setAssignTeacherId] = useState('');
+  const [assignCourseId, setAssignCourseId] = useState('');
+  const [assignSessionId, setAssignSessionId] = useState('');
+
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [enrollStudentId, setEnrollStudentId] = useState('');
+  const [enrollCourseId, setEnrollCourseId] = useState('');
+  const [enrollSessionId, setEnrollSessionId] = useState('');
+
+  const [showDeptModal, setShowDeptModal] = useState(false);
+  const [newDeptCode, setNewDeptCode] = useState('');
+  const [newDeptName, setNewDeptName] = useState('');
+
+  const [showProgModal, setShowProgModal] = useState(false);
+  const [newProgDeptId, setNewProgDeptId] = useState('');
+  const [newProgCode, setNewProgCode] = useState('');
+  const [newProgName, setNewProgName] = useState('');
+  const [newProgSemesters, setNewProgSemesters] = useState(8);
 
   // Calculation & Summary State
   const [summary, setSummary] = useState<any | null>(null);
   const [sessionResults, setSessionResults] = useState<any[]>([]);
   const [officialMarks, setOfficialMarks] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
 
   // Modals & Action States
   const [loading, setLoading] = useState<boolean>(false);
   const [actionMsg, setActionMsg] = useState<{ text: string; type: 'success' | 'danger' } | null>(null);
+
+  // Batch Review state
+  const [selectedBatchForReview, setSelectedBatchForReview] = useState<any | null>(null);
+  const [batchReviewRows, setBatchReviewRows] = useState<any[]>([]);
+  const [loadingBatchRows, setLoadingBatchRows] = useState<boolean>(false);
+  const [rejectModalBatch, setRejectModalBatch] = useState<any | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string>('');
+
+  // Entity Creation Modals
+  const [showSessionModal, setShowSessionModal] = useState<boolean>(false);
+  const [newSessionName, setNewSessionName] = useState<string>('');
+  const [newSessionYear, setNewSessionYear] = useState<string>('2025-2026');
+  const [newSessionSem, setNewSessionSem] = useState<number>(1);
+
+  const [showCourseModal, setShowCourseModal] = useState<boolean>(false);
+  const [newCourseCode, setNewCourseCode] = useState<string>('');
+  const [newCourseName, setNewCourseName] = useState<string>('');
+  const [newCourseCredits, setNewCourseCredits] = useState<number>(3.0);
+  const [newCoursePassPct, setNewCoursePassPct] = useState<number>(40.0);
 
   // Amendment modal
   const [selectedMarkForAmend, setSelectedMarkForAmend] = useState<any | null>(null);
@@ -59,12 +127,49 @@ export const AdminDashboard: React.FC = () => {
 
         if (res.status === 'fulfilled') setSessionResults(res.value);
         else setSessionResults([]);
-      } else if (activeTab === 'amendments' || activeTab === 'imports') {
+      } else if (activeTab === 'imports') {
+        const batchList = await api.listBatches(sessId);
+        setBatches(batchList);
+      } else if (activeTab === 'amendments') {
         const marks = await api.getOfficialMarks(sessId);
         setOfficialMarks(marks);
       } else if (activeTab === 'audit') {
         const logs = await api.getAuditLogs(100);
         setAuditLogs(logs);
+      } else if (activeTab === 'directory') {
+        const [tList, sList, aList, eList, dList, pList, cList] = await Promise.allSettled([
+          api.listTeachers(),
+          api.listStudents(),
+          api.listAssignments(sessId || undefined),
+          api.listEnrollments(sessId || undefined),
+          api.getDepartments(),
+          api.getPrograms(),
+          api.getCourses(),
+        ]);
+        if (tList.status === 'fulfilled') setTeachers(tList.value);
+        if (sList.status === 'fulfilled') setStudents(sList.value);
+        if (aList.status === 'fulfilled') setAssignments(aList.value);
+        if (eList.status === 'fulfilled') setEnrollments(eList.value);
+        if (dList.status === 'fulfilled') {
+          setDepartments(dList.value);
+          if (dList.value.length > 0) {
+            setTeacherDeptId((prev) => prev || dList.value[0].id);
+            setNewProgDeptId((prev) => prev || dList.value[0].id);
+          }
+        }
+        if (pList.status === 'fulfilled') {
+          setPrograms(pList.value);
+          if (pList.value.length > 0) {
+            setStudentProgId((prev) => prev || pList.value[0].id);
+          }
+        }
+        if (cList.status === 'fulfilled') {
+          setCourses(cList.value);
+          if (cList.value.length > 0) {
+            setAssignCourseId((prev) => prev || cList.value[0].id);
+            setEnrollCourseId((prev) => prev || cList.value[0].id);
+          }
+        }
       }
     } catch {
       // Non-blocking error handling
@@ -97,7 +202,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // 2. Calculation
-  const handleCalculate = async (allowPartial: boolean = false) => {
+  const handleCalculate = async (allowPartial = false) => {
     if (!selectedSessionId) return;
     setLoading(true);
     try {
@@ -198,12 +303,257 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // 8. Batch Review & Approval Handlers
+  const handleInspectBatchRows = async (batch: any) => {
+    setSelectedBatchForReview(batch);
+    setLoadingBatchRows(true);
+    try {
+      const rows = await api.getBatchRows(batch.id);
+      setBatchReviewRows(rows);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to load batch rows', 'danger');
+    } finally {
+      setLoadingBatchRows(false);
+    }
+  };
+
+  const handleApproveBatch = async (batchId: string) => {
+    if (!confirm('Are you sure you want to approve this marks batch and transfer all rows to official academic marks?')) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.approveBatch(batchId);
+      showMessage('Batch approved successfully and imported into official records!', 'success');
+      setSelectedBatchForReview(null);
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Batch approval failed', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmRejectBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rejectModalBatch || !rejectionReason.trim()) {
+      alert('A mandatory rejection reason is required for administrative audit records.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.rejectBatch(rejectModalBatch.id, rejectionReason.trim());
+      showMessage('Batch rejected and returned to faculty member with notes.', 'success');
+      setRejectModalBatch(null);
+      setRejectionReason('');
+      setSelectedBatchForReview(null);
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Rejection failed', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 9. Entity Creation Handlers
+  const handleCreateSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.createSession({
+        name: newSessionName,
+        academic_year: newSessionYear,
+        semester_number: newSessionSem,
+      });
+      showMessage(`Examination Session "${newSessionName}" created!`, 'success');
+      setShowSessionModal(false);
+      setNewSessionName('');
+      loadSessions();
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to create session', 'danger');
+    }
+  };
+
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.createCourse({
+        code: newCourseCode.trim().toUpperCase(),
+        name: newCourseName.trim(),
+        credits: newCourseCredits,
+        pass_percentage: newCoursePassPct,
+      });
+      showMessage(`Course "${newCourseCode}" registered successfully!`, 'success');
+      setShowCourseModal(false);
+      setNewCourseCode('');
+      setNewCourseName('');
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to create course', 'danger');
+    }
+  };
+
+  const handleCreateTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teacherDeptId) {
+      showMessage('Please select a department for the faculty member', 'danger');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.createTeacher({
+        email: teacherEmail.trim(),
+        password: teacherPassword,
+        full_name: teacherName.trim(),
+        employee_id: teacherEmpId.trim(),
+        department_id: teacherDeptId,
+        designation: teacherDesignation.trim(),
+      });
+      showMessage(`Faculty member "${teacherName}" registered successfully!`, 'success');
+      setShowTeacherModal(false);
+      setTeacherName('');
+      setTeacherEmail('');
+      setTeacherPassword('');
+      setTeacherEmpId('');
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to register faculty member', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentProgId) {
+      showMessage('Please select an academic program for the student', 'danger');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.createStudent({
+        email: studentEmail.trim(),
+        password: studentPassword,
+        full_name: studentName.trim(),
+        registration_number: studentRegNo.trim(),
+        roll_number: studentRollNo.trim() || undefined,
+        program_id: studentProgId,
+        current_semester: studentSem,
+      });
+      showMessage(`Student "${studentName}" (${studentRegNo}) registered successfully!`, 'success');
+      setShowStudentModal(false);
+      setStudentName('');
+      setStudentEmail('');
+      setStudentPassword('');
+      setStudentRegNo('');
+      setStudentRollNo('');
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to register student', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const sessId = assignSessionId || selectedSessionId;
+    if (!assignTeacherId || !assignCourseId || !sessId) {
+      showMessage('Please select teacher, course, and session', 'danger');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.createAssignment({
+        teacher_id: assignTeacherId,
+        course_id: assignCourseId,
+        session_id: sessId,
+      });
+      showMessage('Faculty assigned to course successfully!', 'success');
+      setShowAssignModal(false);
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to assign faculty member', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEnrollStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const sessId = enrollSessionId || selectedSessionId;
+    if (!enrollStudentId || !enrollCourseId || !sessId) {
+      showMessage('Please select student, course, and session', 'danger');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.createEnrollment({
+        student_id: enrollStudentId,
+        course_id: enrollCourseId,
+        session_id: sessId,
+      });
+      showMessage('Student enrolled in course successfully!', 'success');
+      setShowEnrollModal(false);
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to enroll student', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.createDepartment({
+        code: newDeptCode.trim().toUpperCase(),
+        name: newDeptName.trim(),
+      });
+      showMessage(`Department "${newDeptCode}" created successfully!`, 'success');
+      setShowDeptModal(false);
+      setNewDeptCode('');
+      setNewDeptName('');
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to create department', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateProgram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProgDeptId) {
+      showMessage('Please select a department for the program', 'danger');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.createProgram({
+        department_id: newProgDeptId,
+        code: newProgCode.trim().toUpperCase(),
+        name: newProgName.trim(),
+        total_semesters: newProgSemesters,
+      });
+      showMessage(`Academic Program "${newProgCode}" created successfully!`, 'success');
+      setShowProgModal(false);
+      setNewProgCode('');
+      setNewProgName('');
+      loadSessionData(selectedSessionId);
+    } catch (err: any) {
+      showMessage(err.message || 'Failed to create academic program', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const currentSessionObj = sessions.find((s) => s.id === selectedSessionId);
 
   return (
     <div>
       {/* Top Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.35rem' }}>University Administration Control Deck</h1>
           <p style={{ color: 'var(--text-muted)' }}>
@@ -250,6 +600,18 @@ export const AdminDashboard: React.FC = () => {
           ⚡ Calculation & Publication
         </button>
         <button
+          className={`tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
+          onClick={() => setActiveTab('directory')}
+        >
+          👥 Faculty, Students & Directory
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'imports' ? 'active' : ''}`}
+          onClick={() => setActiveTab('imports')}
+        >
+          📥 Marks Batches & Review
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'amendments' ? 'active' : ''}`}
           onClick={() => setActiveTab('amendments')}
         >
@@ -273,7 +635,7 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'calculate_publish' && (
         <div>
           {/* Action Header Card */}
-          <div className="glass-panel" style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="glass-panel" style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 CURRENT SESSION STATUS
@@ -288,7 +650,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 className="btn btn-primary"
                 onClick={() => handleCalculate(false)}
@@ -378,25 +740,29 @@ export const AdminDashboard: React.FC = () => {
                         <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.registration_number}</td>
                         <td style={{ fontWeight: 500 }}>{r.student_name}</td>
                         <td>{r.program_code}</td>
-                        <td>{r.total_marks_obtained.toFixed(1)}</td>
-                        <td>{r.total_max_marks.toFixed(1)}</td>
-                        <td style={{ fontWeight: 700 }}>{r.percentage.toFixed(2)}%</td>
+                        <td style={{ fontWeight: 700 }}>{r.total_marks_obtained}</td>
+                        <td>{r.total_max_marks}</td>
+                        <td>{r.percentage.toFixed(2)}%</td>
                         <td>
                           <span className={`badge ${r.result_status === 'PASS' ? 'badge-pass' : 'badge-fail'}`}>
                             {r.result_status}
                           </span>
                         </td>
                         <td>
-                          <span className={`badge ${r.is_withheld ? 'badge-warning' : 'badge-pass'}`}>
-                            {r.is_withheld ? 'WITHHELD' : 'RELEASED'}
-                          </span>
+                          {r.is_withheld ? (
+                            <span className="badge badge-warning" title={r.withheld_reason || ''}>
+                              WITHHELD
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>RELEASED</span>
+                          )}
                         </td>
                         <td>
                           <button
-                            className={`btn ${r.is_withheld ? 'btn-success' : 'btn-secondary'} btn-sm`}
+                            className={`btn btn-sm ${r.is_withheld ? 'btn-success' : 'btn-danger'}`}
                             onClick={() => {
                               setWithholdTarget(r);
-                              setWithholdReason('');
+                              setWithholdReason(r.withheld_reason || '');
                             }}
                           >
                             {r.is_withheld ? 'Release' : 'Withhold'}
@@ -412,14 +778,157 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: OFFICIAL MARKS & AMENDMENTS */}
+      {/* TAB 2: MARKS BATCHES & REVIEW */}
+      {activeTab === 'imports' && (
+        <div>
+          <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>📥 Submitted Marks Import Batches</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Faculty-submitted CSV marks batches. Batches in <strong>PENDING_APPROVAL</strong> require formal administrative verification and transactional import.
+            </p>
+
+            {batches.length === 0 ? (
+              <p style={{ color: 'var(--text-dim)' }}>No mark batches submitted for this session yet.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>File Name</th>
+                      <th>Total Rows</th>
+                      <th>Valid</th>
+                      <th>Errors</th>
+                      <th>Max Marks</th>
+                      <th>Status</th>
+                      <th>Submitted At</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {batches.map((b) => (
+                      <tr key={b.id}>
+                        <td style={{ fontWeight: 500 }}>{b.file_name}</td>
+                        <td>{b.total_rows}</td>
+                        <td style={{ color: 'var(--success)' }}>{b.valid_rows}</td>
+                        <td style={{ color: b.error_rows > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{b.error_rows}</td>
+                        <td>{b.max_marks}</td>
+                        <td>
+                          <span className={`badge ${b.status === 'IMPORTED' ? 'badge-pass' : b.status === 'PENDING_APPROVAL' ? 'badge-accent' : 'badge-fail'}`}>
+                            {b.status}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          {new Date(b.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleInspectBatchRows(b)}
+                          >
+                            Inspect
+                          </button>
+                          {b.status === 'PENDING_APPROVAL' && (
+                            <>
+                              <button
+                                className="btn btn-success btn-sm"
+                                onClick={() => handleApproveBatch(b.id)}
+                                disabled={loading}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="btn btn-danger btn-sm"
+                                onClick={() => setRejectModalBatch(b)}
+                                disabled={loading}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Staged Rows Inspection */}
+          {selectedBatchForReview && (
+            <div className="glass-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h4 style={{ fontSize: '1.15rem' }}>
+                    Staged Rows: {selectedBatchForReview.file_name} ({selectedBatchForReview.status})
+                  </h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Total: {selectedBatchForReview.total_rows} | Valid: {selectedBatchForReview.valid_rows} | Errors: {selectedBatchForReview.error_rows}
+                  </p>
+                </div>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setSelectedBatchForReview(null)}
+                >
+                  Close Inspection
+                </button>
+              </div>
+
+              {loadingBatchRows ? (
+                <p style={{ color: 'var(--text-muted)' }}>Loading staged batch rows...</p>
+              ) : batchReviewRows.length === 0 ? (
+                <p style={{ color: 'var(--text-dim)' }}>No staged rows found.</p>
+              ) : (
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Row</th>
+                        <th>Student Registration #</th>
+                        <th>Raw Marks</th>
+                        <th>Absent?</th>
+                        <th>Validation Status</th>
+                        <th>Error Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {batchReviewRows.map((r: any) => (
+                        <tr key={r.id || r.row_number}>
+                          <td>{r.row_number}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.raw_registration_number}</td>
+                          <td>{r.is_absent ? <span style={{ color: 'var(--warning)' }}>AB</span> : r.raw_marks_obtained}</td>
+                          <td>{r.is_absent ? 'YES' : 'NO'}</td>
+                          <td>
+                            <span className={`badge ${r.is_valid ? 'badge-pass' : 'badge-fail'}`}>
+                              {r.is_valid ? 'VALID' : 'INVALID'}
+                            </span>
+                          </td>
+                          <td style={{ color: r.is_valid ? 'var(--text-muted)' : 'var(--danger)', fontSize: '0.85rem' }}>
+                            {r.is_valid
+                              ? 'OK'
+                              : Array.isArray(r.validation_errors)
+                                ? r.validation_errors.map((e: any) => e.message).join('; ')
+                                : 'Error'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: OFFICIAL MARKS & AMENDMENTS */}
       {activeTab === 'amendments' && (
         <div className="glass-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <div>
-              <h3 style={{ fontSize: '1.25rem' }}>Official Approved Marks Registry</h3>
+              <h3 style={{ fontSize: '1.25rem' }}>Official Marks Ledger & Senate Amendment Log</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                All approved academic marks for this session. Use the "Amend Mark" tool to perform auditable post-publication corrections.
+                Audited student marks officially committed from approved batches. Amendments require formal senate justification.
               </p>
             </div>
           </div>
@@ -431,12 +940,12 @@ export const AdminDashboard: React.FC = () => {
                   <th>Reg Number</th>
                   <th>Student Name</th>
                   <th>Course</th>
-                  <th>Marks Obtained</th>
+                  <th>Marks</th>
                   <th>Max Marks</th>
-                  <th>%</th>
+                  <th>Percentage</th>
                   <th>Absent?</th>
-                  <th>Amended?</th>
-                  <th>Actions</th>
+                  <th>Amendment Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -472,41 +981,55 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: SESSION LIFECYCLE */}
+      {/* TAB 4: SESSION LIFECYCLE & INSTITUTIONAL SETUP */}
       {activeTab === 'sessions' && (
-        <div className="glass-panel">
-          <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Academic Session Workflow State Machine</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-            Regulate the active phase of this examination session. Transitions enforce academic integrity constraints.
-          </p>
+        <div>
+          <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem' }}>Academic Session Workflow State Machine</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Regulate the active phase of this examination session. Transitions enforce academic integrity constraints.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowSessionModal(true)}>
+                  ➕ New Examination Session
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setShowCourseModal(true)}>
+                  ➕ Register New Course
+                </button>
+              </div>
+            </div>
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleStatusChange('MARKS_ENTRY_OPEN')}
-              disabled={currentSessionObj?.status === 'MARKS_ENTRY_OPEN'}
-            >
-              🔓 Open Marks Entry
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleStatusChange('MARKS_LOCKED')}
-              disabled={currentSessionObj?.status === 'MARKS_LOCKED'}
-            >
-              🔒 Lock Marks Entry
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleStatusChange('ARCHIVED')}
-              disabled={currentSessionObj?.status === 'ARCHIVED'}
-            >
-              📦 Archive Session
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => handleStatusChange('MARKS_ENTRY_OPEN')}
+                disabled={currentSessionObj?.status === 'MARKS_ENTRY_OPEN'}
+              >
+                🔓 Open Marks Entry
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => handleStatusChange('MARKS_LOCKED')}
+                disabled={currentSessionObj?.status === 'MARKS_LOCKED'}
+              >
+                🔒 Lock Marks Entry
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => handleStatusChange('ARCHIVED')}
+                disabled={currentSessionObj?.status === 'ARCHIVED'}
+              >
+                📦 Archive Session
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* TAB 4: AUDIT TRAIL */}
+      {/* TAB 5: AUDIT TRAIL */}
       {activeTab === 'audit' && (
         <div className="glass-panel">
           <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>🔒 Immutable Compliance Audit Log</h3>
@@ -531,7 +1054,7 @@ export const AdminDashboard: React.FC = () => {
                     <td><span className="badge badge-info">{log.action}</span></td>
                     <td style={{ fontWeight: 600 }}>{log.user_name}</td>
                     <td style={{ color: 'var(--accent-cyan)' }}>{log.entity_type}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{log.entity_id.substring(0, 8)}...</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{log.entity_id ? log.entity_id.substring(0, 8) + '...' : '—'}</td>
                     <td style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                       {log.details ? JSON.stringify(log.details) : '—'}
                     </td>
@@ -539,6 +1062,488 @@ export const AdminDashboard: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: FACULTY, STUDENTS & ACADEMIC DIRECTORY */}
+      {activeTab === 'directory' && (
+        <div>
+          {/* Sub Navigation */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+            <button
+              className={`btn btn-sm ${directorySubTab === 'teachers' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDirectorySubTab('teachers')}
+            >
+              👨‍🏫 Faculty Members ({teachers.length})
+            </button>
+            <button
+              className={`btn btn-sm ${directorySubTab === 'students' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDirectorySubTab('students')}
+            >
+              🎓 Students ({students.length})
+            </button>
+            <button
+              className={`btn btn-sm ${directorySubTab === 'assignments' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDirectorySubTab('assignments')}
+            >
+              📋 Course Allocations ({assignments.length})
+            </button>
+            <button
+              className={`btn btn-sm ${directorySubTab === 'enrollments' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDirectorySubTab('enrollments')}
+            >
+              📝 Student Enrollments ({enrollments.length})
+            </button>
+            <button
+              className={`btn btn-sm ${directorySubTab === 'academic_units' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDirectorySubTab('academic_units')}
+            >
+              🏛️ Departments & Programs ({departments.length})
+            </button>
+          </div>
+
+          {/* SubTab 1: TEACHERS */}
+          {directorySubTab === 'teachers' && (
+            <div className="glass-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem' }}>Faculty & Teaching Staff</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Registered faculty members authorized to upload and submit examination marks.
+                  </p>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowTeacherModal(true)}>
+                  ➕ Register Faculty Member
+                </button>
+              </div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Full Name</th>
+                      <th>Email</th>
+                      <th>Employee ID</th>
+                      <th>Designation</th>
+                      <th>Department</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teachers.map((t) => {
+                      const dept = departments.find((d) => d.id === t.department_id);
+                      return (
+                        <tr key={t.id}>
+                          <td style={{ fontWeight: 600 }}>{t.full_name}</td>
+                          <td style={{ color: 'var(--accent-cyan)' }}>{t.email}</td>
+                          <td><code>{t.employee_id}</code></td>
+                          <td>{t.designation}</td>
+                          <td>{dept ? `${dept.code} - ${dept.name}` : t.department_id}</td>
+                          <td>
+                            <span className={`badge ${t.is_active ? 'badge-success' : 'badge-danger'}`}>
+                              {t.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {teachers.length === 0 && (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          No faculty members registered yet. Click "Register Faculty Member" to add one.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SubTab 2: STUDENTS */}
+          {directorySubTab === 'students' && (
+            <div className="glass-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem' }}>Enrolled Students Directory</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Active students eligible for course enrollment and electronic marksheet generation.
+                  </p>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowStudentModal(true)}>
+                  ➕ Register New Student
+                </button>
+              </div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Registration #</th>
+                      <th>Student Name</th>
+                      <th>Official Email</th>
+                      <th>Roll #</th>
+                      <th>Program</th>
+                      <th>Semester</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((s) => {
+                      const prog = programs.find((p) => p.id === s.program_id);
+                      return (
+                        <tr key={s.id}>
+                          <td><code>{s.registration_number}</code></td>
+                          <td style={{ fontWeight: 600 }}>{s.full_name}</td>
+                          <td style={{ color: 'var(--accent-cyan)' }}>{s.email}</td>
+                          <td>{s.roll_number || '—'}</td>
+                          <td>{prog ? prog.code : s.program_id}</td>
+                          <td>Sem {s.current_semester}</td>
+                          <td>
+                            <span className={`badge ${s.is_active ? 'badge-success' : 'badge-danger'}`}>
+                              {s.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {students.length === 0 && (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          No students registered yet. Click "Register New Student" to add students.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SubTab 3: ASSIGNMENTS */}
+          {directorySubTab === 'assignments' && (
+            <div className="glass-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem' }}>Faculty Course Allocations</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Courses allocated to teachers for marks evaluation in examination sessions.
+                  </p>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowAssignModal(true)}>
+                  ➕ Assign Faculty to Course
+                </button>
+              </div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Faculty Member</th>
+                      <th>Employee ID</th>
+                      <th>Course</th>
+                      <th>Examination Session</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignments.map((a) => (
+                      <tr key={a.id}>
+                        <td style={{ fontWeight: 600 }}>{a.teacher_name}</td>
+                        <td><code>{a.employee_id}</code></td>
+                        <td><strong>{a.course_code}</strong> - {a.course_name}</td>
+                        <td>{a.session_name || selectedSessionId}</td>
+                        <td>
+                          <span className={`badge ${a.is_active ? 'badge-success' : 'badge-danger'}`}>
+                            {a.is_active ? 'Active' : 'Revoked'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {assignments.length === 0 && (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          No faculty course allocations found for this session. Click "Assign Faculty to Course" to create one.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SubTab 4: ENROLLMENTS */}
+          {directorySubTab === 'enrollments' && (
+            <div className="glass-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem' }}>Student Course Enrollments</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Registered course examinees for this active examination session.
+                  </p>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowEnrollModal(true)}>
+                  ➕ Enroll Student in Course
+                </button>
+              </div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Registration #</th>
+                      <th>Student Name</th>
+                      <th>Course</th>
+                      <th>Session</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enrollments.map((e) => (
+                      <tr key={e.id}>
+                        <td><code>{e.registration_number}</code></td>
+                        <td style={{ fontWeight: 600 }}>{e.student_name}</td>
+                        <td><strong>{e.course_code}</strong> - {e.course_name}</td>
+                        <td>{currentSessionObj?.name || 'Current Session'}</td>
+                        <td>
+                          <span className={`badge ${e.is_active ? 'badge-success' : 'badge-danger'}`}>
+                            {e.is_active ? 'Enrolled' : 'Dropped'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {enrollments.length === 0 && (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          No course enrollments found for this session. Click "Enroll Student in Course" to enroll students.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SubTab 5: ACADEMIC UNITS */}
+          {directorySubTab === 'academic_units' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+              <div className="glass-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1.15rem' }}>Academic Departments</h3>
+                  <button className="btn btn-primary btn-sm" onClick={() => setShowDeptModal(true)}>
+                    ➕ Add Department
+                  </button>
+                </div>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Department Name</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {departments.map((d) => (
+                        <tr key={d.id}>
+                          <td><code>{d.code}</code></td>
+                          <td>{d.name}</td>
+                          <td><span className="badge badge-success">Active</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="glass-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1.15rem' }}>Degree Programs</h3>
+                  <button className="btn btn-primary btn-sm" onClick={() => setShowProgModal(true)}>
+                    ➕ Add Program
+                  </button>
+                </div>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Program Name</th>
+                        <th>Semesters</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {programs.map((p) => (
+                        <tr key={p.id}>
+                          <td><code>{p.code}</code></td>
+                          <td>{p.name}</td>
+                          <td>{p.total_semesters} Semesters</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: REJECT BATCH */}
+      {rejectModalBatch && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>❌ Reject Marks Batch: {rejectModalBatch.file_name}</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setRejectModalBatch(null)}>✕</button>
+            </div>
+            <form onSubmit={handleConfirmRejectBatch}>
+              <div className="modal-body">
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                  Please provide the exact reason for rejecting this marks submission. The faculty member will see this message and be instructed to correct their CSV.
+                </p>
+                <div className="form-group">
+                  <label className="form-label">Rejection Justification</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={3}
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="e.g. Mismatched maximum marks, missing 5 enrolled students."
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setRejectModalBatch(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-danger" disabled={loading}>
+                  Confirm Rejection
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE SESSION */}
+      {showSessionModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>➕ Create Examination Session</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowSessionModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreateSession}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Session Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newSessionName}
+                    onChange={(e) => setNewSessionName(e.target.value)}
+                    placeholder="e.g. Autumn 2026 Regular Examination"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Academic Year</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newSessionYear}
+                    onChange={(e) => setNewSessionYear(e.target.value)}
+                    placeholder="e.g. 2025-2026"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Semester Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    className="form-input"
+                    value={newSessionSem}
+                    onChange={(e) => setNewSessionSem(parseInt(e.target.value) || 1)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowSessionModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Create Session</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE COURSE */}
+      {showCourseModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>➕ Register New Course</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowCourseModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreateCourse}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Course Code</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newCourseCode}
+                    onChange={(e) => setNewCourseCode(e.target.value)}
+                    placeholder="e.g. CS301"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Course Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newCourseName}
+                    onChange={(e) => setNewCourseName(e.target.value)}
+                    placeholder="e.g. Database Management Systems"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Credits</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="1"
+                    max="30"
+                    className="form-input"
+                    value={newCourseCredits}
+                    onChange={(e) => setNewCourseCredits(parseFloat(e.target.value) || 3.0)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Pass Percentage</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    className="form-input"
+                    value={newCoursePassPct}
+                    onChange={(e) => setNewCoursePassPct(parseFloat(e.target.value) || 40.0)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowCourseModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Register Course</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -658,6 +1663,439 @@ export const AdminDashboard: React.FC = () => {
                 Confirm {withholdTarget.is_withheld ? 'Release' : 'Withhold'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REGISTER FACULTY MEMBER */}
+      {showTeacherModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>👨‍🏫 Register Faculty Member</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowTeacherModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreateTeacher}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Full Name & Title</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={teacherName}
+                    onChange={(e) => setTeacherName(e.target.value)}
+                    placeholder="e.g. Dr. Robert Noyce"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Official Academic Email</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={teacherEmail}
+                    onChange={(e) => setTeacherEmail(e.target.value)}
+                    placeholder="e.g. r.noyce@institution.edu"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Initial Password</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    value={teacherPassword}
+                    onChange={(e) => setTeacherPassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Employee ID / Faculty Code</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={teacherEmpId}
+                    onChange={(e) => setTeacherEmpId(e.target.value)}
+                    placeholder="e.g. FAC-104"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department Affiliation</label>
+                  <select
+                    className="form-select"
+                    value={teacherDeptId}
+                    onChange={(e) => setTeacherDeptId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Department --</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.code} - {d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Academic Designation</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={teacherDesignation}
+                    onChange={(e) => setTeacherDesignation(e.target.value)}
+                    placeholder="e.g. Associate Professor"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowTeacherModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Registering...' : 'Register Faculty Member'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REGISTER STUDENT */}
+      {showStudentModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>🎓 Register New Student</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowStudentModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreateStudent}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Student Full Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    placeholder="e.g. Maya Lin"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Official Student Email</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={studentEmail}
+                    onChange={(e) => setStudentEmail(e.target.value)}
+                    placeholder="e.g. maya.lin@institution.edu"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Initial Password</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    value={studentPassword}
+                    onChange={(e) => setStudentPassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Registration / Matriculation Number</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={studentRegNo}
+                    onChange={(e) => setStudentRegNo(e.target.value)}
+                    placeholder="e.g. STU-2026-088"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Class Roll Number (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={studentRollNo}
+                    onChange={(e) => setStudentRollNo(e.target.value)}
+                    placeholder="e.g. 26-CS-088"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Enrolled Degree Program</label>
+                  <select
+                    className="form-select"
+                    value={studentProgId}
+                    onChange={(e) => setStudentProgId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Degree Program --</option>
+                    {programs.map((p) => (
+                      <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Current Semester Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    className="form-input"
+                    value={studentSem}
+                    onChange={(e) => setStudentSem(parseInt(e.target.value) || 1)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowStudentModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Registering...' : 'Register Student'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ASSIGN TEACHER TO COURSE */}
+      {showAssignModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>📋 Allocate Course to Faculty</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowAssignModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleAssignTeacher}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Select Faculty Member</label>
+                  <select
+                    className="form-select"
+                    value={assignTeacherId}
+                    onChange={(e) => setAssignTeacherId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Faculty --</option>
+                    {teachers.map((t) => (
+                      <option key={t.id} value={t.id}>{t.full_name} ({t.employee_id})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Select Course</label>
+                  <select
+                    className="form-select"
+                    value={assignCourseId}
+                    onChange={(e) => setAssignCourseId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Course --</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Examination Session</label>
+                  <select
+                    className="form-select"
+                    value={assignSessionId || selectedSessionId}
+                    onChange={(e) => setAssignSessionId(e.target.value)}
+                    required
+                  >
+                    {sessions.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.academic_year})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAssignModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Allocating...' : 'Allocate Course'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ENROLL STUDENT IN COURSE */}
+      {showEnrollModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>📝 Enroll Student in Course</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowEnrollModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleEnrollStudent}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Select Student</label>
+                  <select
+                    className="form-select"
+                    value={enrollStudentId}
+                    onChange={(e) => setEnrollStudentId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Student --</option>
+                    {students.map((s) => (
+                      <option key={s.id} value={s.id}>{s.registration_number} - {s.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Select Course</label>
+                  <select
+                    className="form-select"
+                    value={enrollCourseId}
+                    onChange={(e) => setEnrollCourseId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Course --</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Examination Session</label>
+                  <select
+                    className="form-select"
+                    value={enrollSessionId || selectedSessionId}
+                    onChange={(e) => setEnrollSessionId(e.target.value)}
+                    required
+                  >
+                    {sessions.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.academic_year})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEnrollModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Enrolling...' : 'Enroll Student'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD DEPARTMENT */}
+      {showDeptModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>🏛️ Add Academic Department</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowDeptModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreateDepartment}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Department Code</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newDeptCode}
+                    onChange={(e) => setNewDeptCode(e.target.value)}
+                    placeholder="e.g. MECH"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department Full Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newDeptName}
+                    onChange={(e) => setNewDeptName(e.target.value)}
+                    placeholder="e.g. Department of Mechanical Engineering"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowDeptModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Creating...' : 'Create Department'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD DEGREE PROGRAM */}
+      {showProgModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>🎓 Add Degree Program</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowProgModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleCreateProgram}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Parent Department</label>
+                  <select
+                    className="form-select"
+                    value={newProgDeptId}
+                    onChange={(e) => setNewProgDeptId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Department --</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.code} - {d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Program Code</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newProgCode}
+                    onChange={(e) => setNewProgCode(e.target.value)}
+                    placeholder="e.g. BTECH-MECH"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Program Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newProgName}
+                    onChange={(e) => setNewProgName(e.target.value)}
+                    placeholder="e.g. Bachelor of Technology in Mechanical Engineering"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Total Semesters</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    className="form-input"
+                    value={newProgSemesters}
+                    onChange={(e) => setNewProgSemesters(parseInt(e.target.value) || 8)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowProgModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Creating...' : 'Create Program'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

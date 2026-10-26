@@ -188,7 +188,9 @@ class MarksService:
                 student_calc.total_marks_obtained = round(total_obtained, 2)
                 student_calc.total_max_marks = round(total_max, 2)
                 student_calc.percentage = round((total_obtained / total_max * 100), 2) if total_max > 0 else 0.0
-                student_calc.result_status = ResultStatus.FAIL if has_failed else ResultStatus.PASS
+                if not student_calc.is_withheld:
+                    student_calc.result_status = ResultStatus.FAIL if has_failed else ResultStatus.PASS
+
 
         db.commit()
         return MarksService.get_official_mark(db, mark_id)

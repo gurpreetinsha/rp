@@ -1,13 +1,16 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.modules.auth.models import User
+from app.core.enums import UserRole
 from app.modules.auth.dependencies import (
     require_admin, require_teacher, require_student, require_staff, get_current_user
 )
+from app.modules.users_mgmt.models import TeacherCourseAssignment
 from app.modules.users_mgmt.schemas import (
     TeacherCreate, TeacherOut,
     StudentCreate, StudentOut,
@@ -125,7 +128,23 @@ def list_enrollments(
     current_staff: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ):
-    """Staff (Admin/Teacher): list students enrolled in a course/session."""
+    """Staff (Admin/Teacher): list students enrolled in a course/session with assignment verification."""
+    if current_staff.role == UserRole.TEACHER:
+        if not course_id or not session_id:
+            raise ForbiddenException("Faculty members must specify course_id and session_id to view course enrollments")
+        teacher = UsersManagementService.get_teacher_by_user_id(db, current_staff.id)
+        if not teacher:
+            raise ForbiddenException("Teacher profile not found for this account")
+        assignment = db.execute(
+            select(TeacherCourseAssignment).where(
+                TeacherCourseAssignment.teacher_id == teacher.id,
+                TeacherCourseAssignment.course_id == course_id,
+                TeacherCourseAssignment.session_id == session_id,
+                TeacherCourseAssignment.is_active == True,
+            )
+        ).scalar_one_or_none()
+        if not assignment:
+            raise ForbiddenException("You are not assigned to evaluate this course for this session")
     return UsersManagementService.list_enrollments(db, session_id=session_id, course_id=course_id)
 
 

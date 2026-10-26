@@ -6,13 +6,16 @@ services:
     container_name: srp_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: srp_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-srp_db}
     volumes:
       - pg_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-srp_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -21,11 +24,12 @@ services:
     container_name: srp_backend
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/srp_db
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-srp_db}
     ports:
       - "8000:8000"
 
@@ -39,8 +43,6 @@ services:
       - backend
     ports:
       - "80:80"
-    # The frontend serves static files via nginx on port 80.
-    # Ensure the Vite dev proxy is disabled in production build.
 
 volumes:
   pg_data:

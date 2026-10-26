@@ -33,26 +33,6 @@ export function App() {
     setCurrentUser(null);
   };
 
-  const handleQuickPersonaSwitch = async (role: 'ADMIN' | 'TEACHER' | 'STUDENT') => {
-    let email = 'admin@institution.edu';
-    let pass = 'AdminSecret123!';
-    if (role === 'TEACHER') {
-      email = 'teacher@institution.edu';
-      pass = 'TeacherSecret123!';
-    } else if (role === 'STUDENT') {
-      email = 'student@institution.edu';
-      pass = 'StudentSecret123!';
-    }
-
-    try {
-      const session = await api.login(email, pass);
-      localStorage.setItem('srp_token', session.token);
-      setCurrentUser(session.user);
-    } catch (err: any) {
-      alert(`Could not switch to ${role}: ${err.message || 'Check database seed'}`);
-    }
-  };
-
   if (initializing) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -69,7 +49,6 @@ export function App() {
       <Navbar
         user={currentUser}
         onLogout={handleLogout}
-        onQuickLogin={handleQuickPersonaSwitch}
       />
 
       <main className="main-content">

@@ -41,7 +41,10 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, str) and v.startswith("["):
             return json.loads(v)
-        return v
+        elif isinstance(v, list):
+            return [str(i) for i in v]
+        return [str(v)]
+
 
 
 settings = Settings()

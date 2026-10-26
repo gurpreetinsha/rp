@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.core.enums import ResultStatus
+from app.core.enums import ResultStatus, UserRole
+from app.core.exceptions import ForbiddenException
 from app.modules.auth.dependencies import require_admin, require_staff, require_student
 from app.modules.auth.models import User
+from app.modules.users_mgmt.models import Teacher, TeacherCourseAssignment, CourseEnrollment
 from app.modules.results.schemas import (
     CalculatedResultOut,
     CalculationSummaryOut,
@@ -64,11 +66,19 @@ def list_session_results(
     current_staff: User = Depends(require_staff),
 ):
     """List calculated student results for an examination session (Admin & Teachers)."""
+    teacher_id = None
+    if current_staff.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_staff.id).first()
+        if not teacher:
+            raise ForbiddenException("Teacher profile not found")
+        teacher_id = teacher.id
+
     return ResultsService.list_session_results(
         db=db,
         session_id=session_id,
         result_status=result_status,
         is_withheld=is_withheld,
+        teacher_id=teacher_id,
     )
 
 
@@ -83,6 +93,25 @@ def get_student_result(
     current_staff: User = Depends(require_staff),
 ):
     """View full subject breakdown for an individual student (Admin & Teachers)."""
+    if current_staff.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_staff.id).first()
+        if not teacher:
+            raise ForbiddenException("Teacher profile not found")
+        assigned_courses = db.query(TeacherCourseAssignment.course_id).filter(
+            TeacherCourseAssignment.teacher_id == teacher.id,
+            TeacherCourseAssignment.session_id == session_id,
+        ).all()
+        assigned_course_ids = [c[0] for c in assigned_courses]
+        if not assigned_course_ids:
+            raise ForbiddenException("You are not assigned to evaluate any courses for this session")
+        student_enrolled = db.query(CourseEnrollment).filter(
+            CourseEnrollment.student_id == student_id,
+            CourseEnrollment.session_id == session_id,
+            CourseEnrollment.course_id.in_(assigned_course_ids),
+        ).first()
+        if not student_enrolled:
+            raise ForbiddenException("You are not authorized to view results for this student")
+
     return ResultsService.get_student_result(
         db=db,
         session_id=session_id,

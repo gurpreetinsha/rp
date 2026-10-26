@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.core.enums import UserRole
 from app.modules.auth.models import User
 from app.modules.auth.schemas import (
     LoginRequest, TokenOut, UserOut, UserCreate, BootstrapAdminRequest
@@ -13,10 +15,20 @@ from app.core.security import create_access_token
 router = APIRouter(prefix="/auth", tags=["Authentication & Access Control"])
 
 
+@router.get("/setup-status")
+def get_setup_status(db: Session = Depends(get_db)):
+    """Check if system has an administrator or needs initial setup."""
+    has_admin = db.execute(select(User).where(User.role == UserRole.ADMIN)).first() is not None
+    return {"needs_setup": not has_admin}
+
+
 @router.post("/login", response_model=TokenOut)
-def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Authenticate with email and password to receive a signed JWT access token."""
-    user = AuthService.authenticate_user(db, credentials.email, credentials.password)
+    client_ip = request.headers.get("X-Forwarded-For") or (request.client.host if request.client else "unknown")
+    if "," in client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+    user = AuthService.authenticate_user(db, credentials.email, credentials.password, client_ip=client_ip)
     access_token = create_access_token(data={
         "sub": str(user.id),
         "email": user.email,

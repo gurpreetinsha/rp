@@ -48,3 +48,9 @@ class ValidationFailedException(SRPException):
 
 
 ValidationException = ValidationFailedException
+
+
+class RateLimitedException(SRPException):
+    def __init__(self, detail: str = "Too many failed attempts. Please try again after 60 seconds."):
+        super().__init__(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail)
+

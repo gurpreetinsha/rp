@@ -4,10 +4,9 @@ import type { UserSession } from '../api/client';
 interface NavbarProps {
   user: UserSession['user'] | null;
   onLogout: () => void;
-  onQuickLogin?: (role: 'ADMIN' | 'TEACHER' | 'STUDENT') => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onQuickLogin }) => {
+export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   return (
     <header className="navbar">
       <div className="navbar-inner">
@@ -22,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onQuickLogin }) 
         </div>
 
         <div className="nav-links">
-          {user ? (
+          {user && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#fff' }}>{user.full_name}</div>
@@ -34,20 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onQuickLogin }) 
                 Sign Out
               </button>
             </div>
-          ) : onQuickLogin ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Demo Switcher:</span>
-              <button className="btn btn-secondary btn-sm" onClick={() => onQuickLogin('ADMIN')}>
-                Admin
-              </button>
-              <button className="btn btn-secondary btn-sm" onClick={() => onQuickLogin('TEACHER')}>
-                Teacher
-              </button>
-              <button className="btn btn-secondary btn-sm" onClick={() => onQuickLogin('STUDENT')}>
-                Student
-              </button>
-            </div>
-          ) : null}
+          )}
         </div>
       </div>
     </header>

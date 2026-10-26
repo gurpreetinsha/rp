@@ -222,6 +222,9 @@ class CSVValidationEngine:
 
             # Absentee check
             is_absent_normalized = absent_str.lower() in ["yes", "true", "ab", "absent", "y", "1"]
+            if marks_str.strip().upper() in ["AB", "ABSENT"]:
+                is_absent_normalized = True
+                marks_str = "0"
 
             # Marks checks
             if is_absent_normalized:

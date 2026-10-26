@@ -7,7 +7,7 @@ from app.core.enums import SessionStatus, ResultStatus
 from app.core.exceptions import NotFoundException, ConflictException, ValidationException
 from app.core.models_base import utcnow
 from app.modules.academic.models import ExaminationSession, Course
-from app.modules.users_mgmt.models import CourseEnrollment, Student
+from app.modules.users_mgmt.models import CourseEnrollment, Student, TeacherCourseAssignment
 from app.modules.marks.models import OfficialMark
 from app.modules.results.models import CalculatedResult, ResultSubjectDetail
 from app.modules.results.schemas import (
@@ -76,10 +76,15 @@ class ResultsService:
         session.status = SessionStatus.CALCULATING
         db.flush()
 
-        # 5. Clear existing results for idempotence
+        # 5. Capture existing withholding states before clearing results for idempotence
         existing_results = db.execute(
             select(CalculatedResult).where(CalculatedResult.session_id == session_id)
         ).scalars().all()
+
+        withheld_status_map: dict[uuid.UUID, bool] = {
+            er.student_id: er.is_withheld for er in existing_results if er.is_withheld
+        }
+
         for er in existing_results:
             db.delete(er)
         db.flush()
@@ -135,6 +140,7 @@ class ResultsService:
 
             overall_percentage = round((total_obtained / total_max * 100), 2) if total_max > 0 else 0.0
             overall_status = ResultStatus.FAIL if has_failed_subject else ResultStatus.PASS
+            was_withheld = withheld_status_map.get(student_id, False)
 
             calculated_result = CalculatedResult(
                 session_id=session_id,
@@ -143,7 +149,7 @@ class ResultsService:
                 total_max_marks=round(total_max, 2),
                 percentage=overall_percentage,
                 result_status=overall_status,
-                is_withheld=False,
+                is_withheld=was_withheld,
                 calculated_at=utcnow(),
                 subject_details=subject_details,
             )
@@ -219,6 +225,7 @@ class ResultsService:
         session_id: uuid.UUID,
         result_status: Optional[ResultStatus] = None,
         is_withheld: Optional[bool] = None,
+        teacher_id: Optional[uuid.UUID] = None,
     ) -> List[CalculatedResultOut]:
         query = (
             select(CalculatedResult)
@@ -229,6 +236,20 @@ class ResultsService:
             )
             .where(CalculatedResult.session_id == session_id)
         )
+
+        if teacher_id:
+            query = query.join(
+                CourseEnrollment,
+                (CourseEnrollment.student_id == CalculatedResult.student_id) &
+                (CourseEnrollment.session_id == CalculatedResult.session_id)
+            ).join(
+                TeacherCourseAssignment,
+                (TeacherCourseAssignment.course_id == CourseEnrollment.course_id) &
+                (TeacherCourseAssignment.session_id == CalculatedResult.session_id)
+            ).where(
+                TeacherCourseAssignment.teacher_id == teacher_id,
+                TeacherCourseAssignment.is_active == True,
+            )
 
         if result_status:
             query = query.where(CalculatedResult.result_status == result_status)

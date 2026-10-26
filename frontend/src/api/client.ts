@@ -79,6 +79,11 @@ export const api = {
 
   getMe: () => request<UserSession['user']>('/auth/me'),
 
+  // Authentication & System Setup
+  getSetupStatus: () => request<{ needs_setup: boolean }>('/auth/setup-status'),
+  bootstrapAdmin: (data: { email: string; password: string; full_name: string }) =>
+    request<any>('/auth/bootstrap-admin', { method: 'POST', body: JSON.stringify(data) }),
+
   // Academic Management
   getSessions: () => request<any[]>('/academic/sessions'),
   createSession: (data: any) =>
@@ -94,16 +99,47 @@ export const api = {
     request<any>('/academic/courses', { method: 'POST', body: JSON.stringify(data) }),
 
   getDepartments: () => request<any[]>('/academic/departments'),
+  createDepartment: (data: { code: string; name: string }) =>
+    request<any>('/academic/departments', { method: 'POST', body: JSON.stringify(data) }),
+
   getPrograms: (deptId?: string) =>
     request<any[]>(deptId ? `/academic/programs?department_id=${deptId}` : '/academic/programs'),
+  createProgram: (data: { department_id: string; code: string; name: string; total_semesters: number }) =>
+    request<any>('/academic/programs', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Teacher & Student Management
+  // Teacher, Student & Enrollment Directory
+  listTeachers: (departmentId?: string) =>
+    request<any[]>(departmentId ? `/users-mgmt/teachers?department_id=${departmentId}` : '/users-mgmt/teachers'),
   createTeacher: (data: any) =>
     request<any>('/users-mgmt/teachers', { method: 'POST', body: JSON.stringify(data) }),
+
+  listStudents: (programId?: string, semester?: number) => {
+    const params = new URLSearchParams();
+    if (programId) params.append('program_id', programId);
+    if (semester) params.append('semester', semester.toString());
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return request<any[]>(`/users-mgmt/students${qs}`);
+  },
   createStudent: (data: any) =>
     request<any>('/users-mgmt/students', { method: 'POST', body: JSON.stringify(data) }),
+
+  listAssignments: (sessionId?: string, courseId?: string) => {
+    const params = new URLSearchParams();
+    if (sessionId) params.append('session_id', sessionId);
+    if (courseId) params.append('course_id', courseId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return request<any[]>(`/users-mgmt/assignments${qs}`);
+  },
   createAssignment: (data: any) =>
     request<any>('/users-mgmt/assignments', { method: 'POST', body: JSON.stringify(data) }),
+
+  listEnrollments: (sessionId?: string, courseId?: string) => {
+    const params = new URLSearchParams();
+    if (sessionId) params.append('session_id', sessionId);
+    if (courseId) params.append('course_id', courseId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return request<any[]>(`/users-mgmt/enrollments${qs}`);
+  },
   createEnrollment: (data: any) =>
     request<any>('/users-mgmt/enrollments', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -122,7 +158,16 @@ export const api = {
       body: formData,
     });
   },
+  listBatches: (sessionId?: string, courseId?: string) => {
+    const params = new URLSearchParams();
+    if (sessionId) params.append('session_id', sessionId);
+    if (courseId) params.append('course_id', courseId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return request<any[]>(`/imports/batches${qs}`);
+  },
   getBatch: (batchId: string) => request<any>(`/imports/batches/${batchId}`),
+  getBatchRows: (batchId: string, errorsOnly = false) =>
+    request<any[]>(`/imports/batches/${batchId}/rows?errors_only=${errorsOnly}`),
   approveBatch: (batchId: string) =>
     request<any>(`/imports/batches/${batchId}/approve`, { method: 'POST' }),
   rejectBatch: (batchId: string, rejectionReason: string) =>
