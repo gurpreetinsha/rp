@@ -11,7 +11,7 @@ from app.modules.academic.schemas import (
     DepartmentCreate, DepartmentUpdate, DepartmentOut,
     ProgramCreate, ProgramUpdate, ProgramOut,
     CourseCreate, CourseUpdate, CourseOut,
-    ExaminationSessionCreate, ExaminationSessionStatusUpdate, ExaminationSessionOut,
+    ExaminationSessionCreate, ExaminationSessionStatusUpdate, ExaminationSessionUpdate, ExaminationSessionOut,
 )
 
 router = APIRouter(prefix="/academic", tags=["Academic Setup"])
@@ -59,6 +59,17 @@ def update_department(
     return AcademicService.update_department(db, department_id, data)
 
 
+@router.delete("/departments/{department_id}")
+def delete_department(
+    department_id: uuid.UUID,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Delete a department (Admin only)."""
+    AcademicService.delete_department(db, department_id)
+    return {"success": True, "message": "Department deleted successfully"}
+
+
 # ---------------- Programs ----------------
 @router.post("/programs", response_model=ProgramOut, status_code=status.HTTP_201_CREATED)
 def create_program(
@@ -100,6 +111,17 @@ def update_program(
 ):
     """Update program details (Admin only)."""
     return AcademicService.update_program(db, program_id, data)
+
+
+@router.delete("/programs/{program_id}")
+def delete_program(
+    program_id: uuid.UUID,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Delete an academic program (Admin only)."""
+    AcademicService.delete_program(db, program_id)
+    return {"success": True, "message": "Program deleted successfully"}
 
 
 # ---------------- Courses ----------------
@@ -144,6 +166,17 @@ def update_course(
     return AcademicService.update_course(db, course_id, data)
 
 
+@router.delete("/courses/{course_id}")
+def delete_course(
+    course_id: uuid.UUID,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Delete a course (Admin only)."""
+    AcademicService.delete_course(db, course_id)
+    return {"success": True, "message": "Course deleted successfully"}
+
+
 # ---------------- Examination Sessions ----------------
 @router.post("/sessions", response_model=ExaminationSessionOut, status_code=status.HTTP_201_CREATED)
 def create_session(
@@ -183,3 +216,25 @@ def update_session_status(
 ):
     """Transition the lifecycle status of an examination session (Admin only)."""
     return AcademicService.update_session_status(db, session_id, data.status)
+
+
+@router.patch("/sessions/{session_id}", response_model=ExaminationSessionOut)
+def update_session(
+    session_id: uuid.UUID,
+    data: ExaminationSessionUpdate,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Update examination session details (Admin only)."""
+    return AcademicService.update_session(db, session_id, data)
+
+
+@router.delete("/sessions/{session_id}")
+def delete_session(
+    session_id: uuid.UUID,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Delete an examination session (Admin only)."""
+    AcademicService.delete_session(db, session_id)
+    return {"success": True, "message": "Examination session deleted successfully"}

@@ -38,6 +38,11 @@ class ConflictException(SRPException):
         super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
+class BadRequestException(SRPException):
+    def __init__(self, detail: str = "Bad request"):
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+
 # Modern Starlette HTTP_422_UNPROCESSABLE_CONTENT with direct integer fallback
 HTTP_422_CODE = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
 

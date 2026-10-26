@@ -128,6 +128,89 @@ class UsersManagementService:
             for t in teachers
         ]
 
+    @staticmethod
+    def update_teacher(db: Session, teacher_id: uuid.UUID, data: TeacherUpdate) -> TeacherOut:
+        teacher = db.execute(
+            select(Teacher).options(joinedload(Teacher.user)).where(Teacher.id == teacher_id)
+        ).scalar_one_or_none()
+        if not teacher:
+            raise NotFoundException(f"Teacher with ID {teacher_id} not found")
+
+        if data.department_id is not None:
+            dept = db.get(Department, data.department_id)
+            if not dept:
+                raise NotFoundException(f"Department with ID {data.department_id} not found")
+            teacher.department_id = data.department_id
+
+        if data.employee_id is not None:
+            new_emp = data.employee_id.strip().upper()
+            existing = db.execute(
+                select(Teacher).where(Teacher.employee_id == new_emp, Teacher.id != teacher_id)
+            ).scalar_one_or_none()
+            if existing:
+                raise ConflictException(f"Teacher with Employee ID '{new_emp}' already exists")
+            teacher.employee_id = new_emp
+
+        if data.designation is not None:
+            teacher.designation = data.designation.strip()
+
+        if data.is_active is not None:
+            teacher.is_active = data.is_active
+            if teacher.user:
+                teacher.user.is_active = data.is_active
+
+        if data.full_name is not None and teacher.user:
+            teacher.user.full_name = data.full_name.strip()
+
+        if data.email is not None and teacher.user:
+            new_email = data.email.strip().lower()
+            existing_user = db.execute(
+                select(User).where(User.email == new_email, User.id != teacher.user.id)
+            ).scalar_one_or_none()
+            if existing_user:
+                raise ConflictException(f"User with email '{new_email}' already exists")
+            teacher.user.email = new_email
+
+        if data.password and teacher.user:
+            teacher.user.hashed_password = hash_password(data.password)
+
+        db.commit()
+        db.refresh(teacher)
+        db.refresh(teacher.user)
+
+        return TeacherOut(
+            id=teacher.id,
+            user_id=teacher.user_id,
+            employee_id=teacher.employee_id,
+            department_id=teacher.department_id,
+            designation=teacher.designation,
+            is_active=teacher.is_active,
+            full_name=teacher.user.full_name,
+            email=teacher.user.email,
+            created_at=teacher.created_at,
+            updated_at=teacher.updated_at,
+        )
+
+    @staticmethod
+    def delete_teacher(db: Session, teacher_id: uuid.UUID) -> None:
+        teacher = db.execute(
+            select(Teacher).options(joinedload(Teacher.user)).where(Teacher.id == teacher_id)
+        ).scalar_one_or_none()
+        if not teacher:
+            raise NotFoundException(f"Teacher with ID {teacher_id} not found")
+
+        assignments = db.execute(
+            select(TeacherCourseAssignment).where(TeacherCourseAssignment.teacher_id == teacher_id)
+        ).scalars().all()
+        for a in assignments:
+            db.delete(a)
+
+        user = teacher.user
+        db.delete(teacher)
+        if user:
+            db.delete(user)
+        db.commit()
+
     # ---------------- Student Management ----------------
     @staticmethod
     def create_student(db: Session, data: StudentCreate) -> StudentOut:
@@ -247,6 +330,93 @@ class UsersManagementService:
             for s in students
         ]
 
+    @staticmethod
+    def update_student(db: Session, student_id: uuid.UUID, data: StudentUpdate) -> StudentOut:
+        student = db.execute(
+            select(Student).options(joinedload(Student.user)).where(Student.id == student_id)
+        ).scalar_one_or_none()
+        if not student:
+            raise NotFoundException(f"Student with ID {student_id} not found")
+
+        if data.program_id is not None:
+            prog = db.get(Program, data.program_id)
+            if not prog:
+                raise NotFoundException(f"Program with ID {data.program_id} not found")
+            student.program_id = data.program_id
+
+        if data.registration_number is not None:
+            new_reg = data.registration_number.strip().upper()
+            existing = db.execute(
+                select(Student).where(Student.registration_number == new_reg, Student.id != student_id)
+            ).scalar_one_or_none()
+            if existing:
+                raise ConflictException(f"Student with Registration Number '{new_reg}' already exists")
+            student.registration_number = new_reg
+
+        if data.roll_number is not None:
+            student.roll_number = data.roll_number.strip() if data.roll_number else None
+
+        if data.current_semester is not None:
+            student.current_semester = data.current_semester
+
+        if data.is_active is not None:
+            student.is_active = data.is_active
+            if student.user:
+                student.user.is_active = data.is_active
+
+        if data.full_name is not None and student.user:
+            student.user.full_name = data.full_name.strip()
+
+        if data.email is not None and student.user:
+            new_email = data.email.strip().lower()
+            existing_user = db.execute(
+                select(User).where(User.email == new_email, User.id != student.user.id)
+            ).scalar_one_or_none()
+            if existing_user:
+                raise ConflictException(f"User with email '{new_email}' already exists")
+            student.user.email = new_email
+
+        if data.password and student.user:
+            student.user.hashed_password = hash_password(data.password)
+
+        db.commit()
+        db.refresh(student)
+        db.refresh(student.user)
+
+        return StudentOut(
+            id=student.id,
+            user_id=student.user_id,
+            registration_number=student.registration_number,
+            roll_number=student.roll_number,
+            program_id=student.program_id,
+            current_semester=student.current_semester,
+            is_active=student.is_active,
+            full_name=student.user.full_name,
+            email=student.user.email,
+            created_at=student.created_at,
+            updated_at=student.updated_at,
+        )
+
+    @staticmethod
+    def delete_student(db: Session, student_id: uuid.UUID) -> None:
+        student = db.execute(
+            select(Student).options(joinedload(Student.user)).where(Student.id == student_id)
+        ).scalar_one_or_none()
+        if not student:
+            raise NotFoundException(f"Student with ID {student_id} not found")
+
+        enrollments = db.execute(
+            select(CourseEnrollment).where(CourseEnrollment.student_id == student_id)
+        ).scalars().all()
+        for e in enrollments:
+            db.delete(e)
+
+        user = student.user
+        db.delete(student)
+        if user:
+            db.delete(user)
+        db.commit()
+
     # ---------------- Course Enrollment Management ----------------
     @staticmethod
     def enroll_student(db: Session, data: EnrollmentCreate) -> EnrollmentOut:
@@ -333,6 +503,14 @@ class UsersManagementService:
             )
             for e in enrollments
         ]
+
+    @staticmethod
+    def delete_enrollment(db: Session, enrollment_id: uuid.UUID) -> None:
+        enrollment = db.get(CourseEnrollment, enrollment_id)
+        if not enrollment:
+            raise NotFoundException(f"Enrollment with ID {enrollment_id} not found")
+        db.delete(enrollment)
+        db.commit()
 
     # ---------------- Teacher Assignment Management ----------------
     @staticmethod
@@ -423,3 +601,11 @@ class UsersManagementService:
             )
             for a in assignments
         ]
+
+    @staticmethod
+    def delete_assignment(db: Session, assignment_id: uuid.UUID) -> None:
+        assignment = db.get(TeacherCourseAssignment, assignment_id)
+        if not assignment:
+            raise NotFoundException(f"Assignment with ID {assignment_id} not found")
+        db.delete(assignment)
+        db.commit()
